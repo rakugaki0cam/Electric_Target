@@ -1,1 +1,2 @@
-電子標的
+electric target
+//電子標的
