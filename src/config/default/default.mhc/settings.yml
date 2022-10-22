@@ -1,0 +1,14 @@
+configName: default
+folderName: Target_test_32MX
+format_version: v1.0
+frameworkPath: ../../Harmony3_iMac
+processor: PIC32MX270F256B
+projectName: target_TEST_32MX
+settings:
+  PackageFilter: gfx_apps_pic32mz_ef;dev_packs;core;touch;csp_apps_pic32mz_ef;core_apps_pic32mz_ef;bsp;quick_docs;usb;csp;gfx;Devices
+  FORCE_OPTIMIZATION: 'false'
+  GENERATE_BACKUP: 'true'
+  TRUSTZONE: 'false'
+  CMSISPath: ./dev_packs/arm/CMSIS/5.8.0
+  MERGE_STRATEGY: USER_ALL
+  DFPPath: ./dev_packs/Microchip/PIC32MX_DFP/1.5.259/atdf/PIC32MX270F256B.atdf
