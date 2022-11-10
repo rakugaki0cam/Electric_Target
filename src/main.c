@@ -44,9 +44,9 @@
   *                         コピー前のものとリンクされている.c .hファイルをプロジェクトから除外してコピーした.c .hファイルをAdd Existing Itemで追加する。
   * 2022.05.14  ver.2.01    1～3番目に入力したセンサーのみで計算する。
   * 
-  * 2022.05.16              測定値が飛ぶことがあるようであんまりよくない。
-  * 2022.11.08  ver.2.02    タマモニのデバッグでのprintfで”R”の文字が出たときにModeが変わってしまう
-  * 2022.11.10  ver.2.03    UARTの受信のあと何かが残っていたよう？？？
+  * 2022.05.16              測定値があちこちにばらつくことがあるようであんまりよくない。
+  * 2022.11.08  ver.2.02    タマモニのデバッグでのprintfで”R”の文字が出たときにModeが変わってしまう。"R"1文字だけのときのみmode変更。
+  * 2022.11.10  ver.2.04    UARTの受信FIFOバッファ8レベルをオーバーフローしてエラー。ソフトリセットしないと受信できない。
   * 
   * 
 */
@@ -70,7 +70,7 @@
 uint16_t    ring_pos = 0;                   //ログデータポインタ
 
 //LOCAL
-uint8_t     version[] = "2.03";             //バージョンナンバー
+uint8_t     version[] = "2.04";             //バージョンナンバー
 uint8_t     sensor_count;                   //センサ入力順番のカウント
 bool        flag_1sec = 0;                  //1秒タイマー割込
 char        buf[BUF_NUM];                   //UARTデータ読込バッファ
@@ -81,8 +81,6 @@ uint8_t     i;
 */
 
 int main(void){
-
-    
     measure_status_source_t   meas_stat;
     display_mode_source_t     disp_mode = SINGLE_LINE;
 
@@ -171,14 +169,15 @@ int main(void){
         //キー入力で表示モードを切り替え
         if (UART1_ReceiverIsReady()){
             //受信あり
-            CORETIMER_DelayMs(BUF_NUM);  //受信待ち 9600bps 1データは約1ms
+            CORETIMER_DelayMs(1);       //受信待ち 9600bps 1データは約1ms
             i = 0;
             while(UART1_ReceiverIsReady()) {
                 buf[i] = UART1_ReadByte();
                 i++;
-                if(i > BUF_NUM){
+                if (i > BUF_NUM){
                     break;
                 }
+                CORETIMER_DelayMs(1);   //受信待ち 9600bps 1データは約1ms
             }
             
             if ((buf[0] == 'R') && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0)){
