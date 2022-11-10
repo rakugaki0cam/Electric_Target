@@ -21,7 +21,7 @@
 typedef enum {
     INPUT_ORDER_STATUS_OK    = 0x0,
     INPUT_ORDER_STATUS_FIXED = 0x1,       
-    INPUT_ORDER_STATUS_ERROR = 0x2        
+    INPUT_ORDER_STATUS_ERROR = 0x2,        
 } input_order_status_source_t;
 
 

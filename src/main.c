@@ -45,7 +45,8 @@
   * 2022.05.14  ver.2.01    1～3番目に入力したセンサーのみで計算する。
   * 
   * 2022.05.16              測定値が飛ぶことがあるようであんまりよくない。
-  * 
+  * 2022.11.08  ver.2.02    タマモニのデバッグでのprintfで”R”の文字が出たときにModeが変わってしまう
+  * 2022.11.10  ver.2.03    UARTの受信のあと何かが残っていたよう？？？
   * 
   * 
 */
@@ -62,26 +63,32 @@
 //着弾タイミングのフォールエッジをタマモニに送る
 #define     impact_PT4_set()    PT4_Clear()     //着弾センサ信号出力
 #define     impact_PT4_reset()  PT4_Set()       //着弾センサ信号クリア
+#define     BUF_NUM     64                      //UARTデータ読込バッファ数
 
 
 //GLOBAL
 uint16_t    ring_pos = 0;                   //ログデータポインタ
 
 //LOCAL
-uint8_t     version[] = "2.01";             //バージョンナンバー
+uint8_t     version[] = "2.03";             //バージョンナンバー
 uint8_t     sensor_count;                   //センサ入力順番のカウント
 bool        flag_1sec = 0;                  //1秒タイマー割込
-
+char        buf[BUF_NUM];                   //UARTデータ読込バッファ
+uint8_t     i;
 
 /*
     Main application
 */
 
 int main(void){
+
+    
     measure_status_source_t   meas_stat;
     display_mode_source_t     disp_mode = SINGLE_LINE;
 
     uint16_t    shot_count = 0;     //ショットカウントは1から。0は入力無し
+
+    
     
 #if TX_TEST
     uint16_t    data;
@@ -163,9 +170,19 @@ int main(void){
         
         //キー入力で表示モードを切り替え
         if (UART1_ReceiverIsReady()){
-            if (UART1_ReadByte() == 'R'){
-                CORETIMER_DelayMs(50); //通信切り替えのため少し間をあける
-
+            //受信あり
+            CORETIMER_DelayMs(BUF_NUM);  //受信待ち 9600bps 1データは約1ms
+            i = 0;
+            while(UART1_ReceiverIsReady()) {
+                buf[i] = UART1_ReadByte();
+                i++;
+                if(i > BUF_NUM){
+                    break;
+                }
+            }
+            
+            if ((buf[0] == 'R') && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0)){
+                //ようは’R'が1文字だけ入力したとき
                 switch(disp_mode){
                     case SINGLE_LINE:
                         disp_mode = FULL_DEBUG;
@@ -184,6 +201,11 @@ int main(void){
                         disp_mode = SINGLE_LINE;    //failsafe
                         break;
                 }
+            }
+            UART1_ErrorGet();
+            //バッファクリア
+            for(i = 0; i < BUF_NUM; i++){
+                buf[i] = 0;
             }
         }
                 
