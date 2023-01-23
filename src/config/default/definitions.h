@@ -60,6 +60,7 @@
 #include "peripheral/cvr/plib_cvr.h"
 #include "peripheral/coretimer/plib_coretimer.h"
 #include "peripheral/uart/plib_uart1.h"
+#include "peripheral/uart/plib_uart2.h"
 #include "peripheral/tmr/plib_tmr2.h"
 
 // DOM-IGNORE-BEGIN

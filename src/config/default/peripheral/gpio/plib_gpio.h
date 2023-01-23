@@ -62,6 +62,14 @@
 // *****************************************************************************
 
 
+/*** Macros for TX_ESP pin ***/
+#define TX_ESP_Get()               ((PORTB >> 0) & 0x1)
+#define TX_ESP_PIN                  GPIO_PIN_RB0
+
+/*** Macros for RX_ESP pin ***/
+#define RX_ESP_Get()               ((PORTB >> 1) & 0x1)
+#define RX_ESP_PIN                  GPIO_PIN_RB1
+
 /*** Macros for TEMP_V pin ***/
 #define TEMP_V_Get()               ((PORTB >> 2) & 0x1)
 #define TEMP_V_PIN                  GPIO_PIN_RB2

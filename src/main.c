@@ -37,7 +37,7 @@
   * 2022.04.16  ver.1.10    csv整理とログデータ保管
   * 2022.04.16  ver.1.11    センサ遅れ補正計算ー測定時間差からの計算の方がいいみたい。
   * 2022.04.17  ver.1.20    通信をRS485へ(送信制御にRTSを使う)、着弾タイミングPT4アウトプット追加
-  * 2022.05.03  ver.1.21    タマモニ用バイナリデータ出力
+  * 2022.05.03  ver.1.21    タマモニ用データ出力
   * 
   * V2_edition
   * 2022.05.11  ver.2.00    V1よりプロジェクトをコピー (ファイルでコピーした後、MPLABXにてプロジェクトネームを変更し、Harmonyを起動、code作成。
@@ -47,6 +47,14 @@
   * 2022.05.16              測定値があちこちにばらつくことがあるようであんまりよくない。
   * 2022.11.08  ver.2.02    タマモニのデバッグでのprintfで”R”の文字が出たときにModeが変わってしまう。"R"1文字だけのときのみmode変更。
   * 2022.11.10  ver.2.04    UARTの受信FIFOバッファ8レベルをオーバーフローしてエラー。ソフトリセットしないと受信できない。
+  * 
+  * V3_edition
+  * 2023.01.20  ver.3.00    無線WiFi ESP32を使う　UART2を追加(Pickit4,5とだぶる) とりあえず9600bps
+  * 2023.01.22  ver.3.01    測定値異常の時は、999.99にして桁数を制限(送信データのfloat桁数が乱れるため)
+  * 
+  * 
+  * 計算値エラーの時の戻り値を整理しないといけない。
+  * 
   * 
   * 
 */
@@ -70,7 +78,7 @@
 uint16_t    ring_pos = 0;                   //ログデータポインタ
 
 //LOCAL
-uint8_t     version[] = "2.04";             //バージョンナンバー
+uint8_t     version[] = "3.01";             //バージョンナンバー
 uint8_t     sensor_count;                   //センサ入力順番のカウント
 bool        flag_1sec = 0;                  //1秒タイマー割込
 char        buf[BUF_NUM];                   //UARTデータ読込バッファ
@@ -128,6 +136,24 @@ int main(void){
     printf(">temp: %5.1f%cC\n", temp_ave_degree_c, 0xdf);
     printf("\n");
     
+#if TEST_COM_ESP32
+    //ESP32 title TEST
+    sprintf(buf, "\n\n");
+    UART2_Write(buf, strlen(buf));
+    sprintf(buf, "********************\n");
+    UART2_Write(buf, strlen(buf));
+    sprintf(buf, " SEND to ESP32      \n");
+    UART2_Write(buf, strlen(buf));
+    sprintf(buf, "                    \n");
+    UART2_Write(buf, strlen(buf));
+    sprintf(buf, "          ver.%s\n", version);
+    UART2_Write(buf, strlen(buf));
+    sprintf(buf, "********************\n");
+    UART2_Write(buf, strlen(buf));
+    sprintf(buf, "\n");
+    UART2_Write(buf, strlen(buf));
+#endif
+    
     measure_init();
     data_clear(); 
     
@@ -168,7 +194,7 @@ int main(void){
         
         //キー入力で表示モードを切り替え
         if (UART1_ReceiverIsReady()){
-            //受信あり
+            //シリアル(タマモニ、デバッガー)から受信あり
             CORETIMER_DelayMs(1);       //受信待ち 9600bps 1データは約1ms
             i = 0;
             while(UART1_ReceiverIsReady()) {
@@ -207,7 +233,7 @@ int main(void){
                 buf[i] = 0;
             }
         }
-                
+        
         if (flag_1sec == 1){
             //1秒毎処理
             get_temp_adc();

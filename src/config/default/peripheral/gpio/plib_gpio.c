@@ -62,7 +62,7 @@ void GPIO_Initialize ( void )
     /* PORTB Initialization */
     LATB = 0x830; /* Initial Latch Value */
     TRISBCLR = 0x830; /* Direction Control */
-    ANSELBCLR = 0xa000; /* Digital Mode Enable */
+    ANSELBCLR = 0xa003; /* Digital Mode Enable */
 
 
 
@@ -72,10 +72,12 @@ void GPIO_Initialize ( void )
     IC3R = 4;
     IC1R = 2;
     U1RXR = 3;
+    U2RXR = 2;
 
     /* PPS Output Remapping */
     RPB15R = 1;
     RPB10R = 1;
+    RPB0R = 2;
 
 
 }

@@ -61,6 +61,9 @@ uint8_t calc_locate_xy(void){
     calc_stat = calc_of_3sensor();   //座標を計算
     if (calc_stat != CALC_STATUS_OK){
         //計算値が不可だった場合
+        result.radius0_mm = 999.99;
+        result.impact_pos_x_mm = 999.99;
+        result.impact_pos_y_mm = 999.99;
     }else {
         //OK            
     }
@@ -83,6 +86,9 @@ uint8_t calc_of_3sensor(void){
     if (asign_3sensor() != 0){ 
         //代入するデータがダメな時
         calc_stat = CALC_STATUS_NOT_ENOUGH;
+        result.radius0_mm = 999.99;
+        result.impact_pos_x_mm = 999.99;
+        result.impact_pos_y_mm = 999.99;
         result.status = calc_stat;
         return calc_stat;
     }
@@ -94,6 +100,9 @@ uint8_t calc_of_3sensor(void){
     if (apollonius_3circle_xyr() != 0){
         //計算がダメなとき
         calc_stat = CALC_STATUS_CAL_ERROR;
+        result.radius0_mm = 999.99;
+        result.impact_pos_x_mm = 999.99;
+        result.impact_pos_y_mm = 999.99;
         result.status = calc_stat;
         return calc_stat;
     }
@@ -102,17 +111,26 @@ uint8_t calc_of_3sensor(void){
     if (result.radius0_mm > R_MAX){
         //rが大きすぎる
         calc_stat = CALC_STATUS_R0_ERR;
+        result.radius0_mm = 999.99;
+        result.impact_pos_x_mm = 999.99;
+        result.impact_pos_y_mm = 999.99;
         result.status = calc_stat;
         return calc_stat;
     }
     if ((result.impact_pos_x_mm < -TARGET_WIDTH_HALF) || (result.impact_pos_x_mm > TARGET_WIDTH_HALF)){
         //xが大きすぎる
         calc_stat = CALC_STATUS_X0_ERR;
+        result.radius0_mm = 999.99;
+        result.impact_pos_x_mm = 999.99;
+        result.impact_pos_y_mm = 999.99;
         result.status = calc_stat;
         return calc_stat;
     }
     if ((result.impact_pos_y_mm < -TARGET_HEIGHT_HALF) || (result.impact_pos_y_mm > TARGET_HEIGHT_HALF)){
         //yが大きすぎる
+        result.radius0_mm = 999.99;
+        result.impact_pos_x_mm = 999.99;
+        result.impact_pos_y_mm = 999.99;
         calc_stat = CALC_STATUS_Y0_ERR;
         result.status = calc_stat;
         return calc_stat;
@@ -276,12 +294,12 @@ float   impact_time_msec(float r0_mm){
     //着弾時刻は最初のセンサオンより前の時刻
     //塩ビ板t2の中を伝わる時間(表に玉が当たり、裏面に伝わる時間)
 #define TARGET_PLATE_T_MM   2       //軟質塩ビのマト板の厚さ mm
-#define V_PLATE_MPS         2300    //軟質塩ビ板中の音速 m/sec
+#define V_PLATE_MPS         2300    //軟質塩ビ板中の音速 m/sec(= mm/msec)
     float   dt_t2_msec;
     
-    dt_t2_msec = TARGET_PLATE_T_MM / V_PLATE_MPS;
+    dt_t2_msec = TARGET_PLATE_T_MM / V_PLATE_MPS;   //msec
     
-    return  -r0_mm / v_air_mps() + dt_t2_msec;   //msec
+    return  -r0_mm / v_air_mps() + dt_t2_msec;      //msec
 }
 
 

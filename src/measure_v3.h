@@ -1,11 +1,11 @@
 /*
- * measure.h
+ * measure_v3.h
  * 
  * ‘ª’è‚Æ•\Ž¦
  * 
  *  2022.04.16
- * V2_editon
- *  2022.5.11
+ * V3_editon
+ *  2023.1.20
  * 
  *  
  * File:   
@@ -50,6 +50,7 @@ uint8_t     measure_data_assign(void);
 //display
 void    result_disp(uint16_t, measure_status_source_t, uint8_t);
 void    tamamoni_data_send(void);
+void    esp32wifi_data_send(void);
 void    single_line(uint16_t, measure_status_source_t);
 void    full_debug(uint16_t, measure_status_source_t);
 void    csv_title(void);

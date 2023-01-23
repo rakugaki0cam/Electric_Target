@@ -1,5 +1,5 @@
 /*
- * measure_v2.c
+ * measure_v3.c
  * 
  * 電子ターゲット
  * 測定と表示
@@ -7,12 +7,13 @@
  *  2022.04.16
  * V2_edition
  *  2022.05.11  1-3番目に入力したセンサから計算する
- * 
+ * V3_edition
+ *  2023.01.20  wifi追加
  * 
  *  
  */
 
-#include "measure_v2.h"
+#include "measure_v3.h"
 
 //GLOBAL
 
@@ -45,6 +46,9 @@ uint8_t measure_main(void){
     if (measure_data_assign() < 3){
         //測定数が足りない時(計算には3個以上のデータが必要)
         meas_stat = MEASURE_STATUS_NOT_ENOUGH;
+        result.radius0_mm = 999.99;
+        result.impact_pos_x_mm = 999.99;
+        result.impact_pos_y_mm = 999.99;
         return meas_stat;
     }
     //座標の計算
@@ -139,12 +143,14 @@ uint8_t measure_data_assign(void){
 }
 
 
-//座標データをデバッガに出力
+//座標データをデバッガとLCD&WiFiに出力
 void result_disp(uint16_t shot_count, measure_status_source_t meas_stat, uint8_t mode){ 
     //測定結果、計算結果の表示
     
-    tamamoni_data_send();
+    esp32wifi_data_send();
+    CORETIMER_DelayMs(30);     //間を開ける
     
+    tamamoni_data_send();
     CORETIMER_DelayMs(30);  //データ送信の間をつくる
     
     switch(mode){
@@ -166,7 +172,8 @@ void result_disp(uint16_t shot_count, measure_status_source_t meas_stat, uint8_t
 
 //
 void tamamoni_data_send(void){
-    //タマモニへバイナリデータを送信
+    //タマモニへ座標データ他を送信
+    
     //header
     printf("BINX0Y0dT ");
     //
@@ -177,6 +184,16 @@ void tamamoni_data_send(void){
     printf("END ");
     //
     printf(",");
+}
+
+
+void esp32wifi_data_send(void){
+    //ESP32へ座標データ他を送信
+    //WiFi & target LCD
+    char    buf[255];
+
+    sprintf(buf, "ESP32 %8.3f %8.3f %8.4f END ,", result.impact_pos_x_mm, result.impact_pos_y_mm, result.delay_time0_msec);
+    UART2_Write(buf, strlen(buf));
 }
 
 

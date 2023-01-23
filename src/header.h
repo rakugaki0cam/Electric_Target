@@ -20,13 +20,14 @@
 #include <stdbool.h>                    // Defines true
 #include <stdlib.h>                     // Defines EXIT_FAILURE
 #include "definitions.h"                // SYS function prototypes
+#include <string.h>
 
 //#include <xc.h> // include processor files - each processor file is guarded. 
 
 #include "calc_locate.h"
 #include "log.h"
 #include "mcp9700a_temp.h"
-#include "measure_v2.h"
+#include "measure_v3.h"
 
 
 //GLOBAL

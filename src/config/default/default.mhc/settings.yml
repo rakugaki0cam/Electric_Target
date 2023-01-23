@@ -5,7 +5,7 @@ frameworkPath: ../../Harmony3_iMac
 processor: PIC32MX270F256B
 projectName: target_TEST_32MX
 settings:
-  PackageFilter: gfx_apps_pic32mz_ef;dev_packs;core;touch;csp_apps_pic32mz_ef;core_apps_pic32mz_ef;bsp;quick_docs;usb;csp;gfx;Devices
+  PackageFilter: mc_apps_sam_rh707;motor_control;gfx_apps_pic32mz_ef;dev_packs;mc_apps_pic32cm_mc;core;mc_apps_pic32mk;touch;x2c;csp_apps_pic32mz_ef;core_apps_pic32mz_ef;mc_apps_sam_rh71;mc_apps_sam_c2x;bsp;mc_apps_sam_d5x_e5x;quick_docs;usb;csp;harmony-services;gfx;mc_apps_sam_e7x_s7x_v7x;Devices
   FORCE_OPTIMIZATION: 'false'
   GENERATE_BACKUP: 'true'
   TRUSTZONE: 'false'
