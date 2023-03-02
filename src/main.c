@@ -51,7 +51,10 @@
   * V3_edition
   * 2023.01.20  ver.3.00    無線WiFi ESP32を使う　UART2を追加(Pickit4,5とだぶる) とりあえず9600bps
   * 2023.01.22  ver.3.01    測定値異常の時は、999.99にして桁数を制限(送信データのfloat桁数が乱れるため)
-  * 
+  * 2023.02.18  ver.3.10    LANからのタマモニコマンド読み込み->ESP32へ(そのままLAN->UART1)
+  * 2023.02.19  ver.3.11    ESP32への着弾データ転送UART2を9600bps->115200bpsに
+  * 2023.02.21  ver.3.12    着弾表示が遅い -> ESPへのデータ送信を早く。LANは少し経ってから送信
+  * 2023.02.25  ver.3.13    着弾データ出力(シリアルモニタ)無しを追加。通常は無しにする。
   * 
   * 計算値エラーの時の戻り値を整理しないといけない。
   * 
@@ -71,14 +74,14 @@
 //着弾タイミングのフォールエッジをタマモニに送る
 #define     impact_PT4_set()    PT4_Clear()     //着弾センサ信号出力
 #define     impact_PT4_reset()  PT4_Set()       //着弾センサ信号クリア
-#define     BUF_NUM     64                      //UARTデータ読込バッファ数
+#define     BUF_NUM     250                     //UARTデータ読込バッファ数
 
 
 //GLOBAL
 uint16_t    ring_pos = 0;                   //ログデータポインタ
 
 //LOCAL
-uint8_t     version[] = "3.01";             //バージョンナンバー
+uint8_t     version[] = "3.13";             //バージョンナンバー
 uint8_t     sensor_count;                   //センサ入力順番のカウント
 bool        flag_1sec = 0;                  //1秒タイマー割込
 char        buf[BUF_NUM];                   //UARTデータ読込バッファ
@@ -90,7 +93,7 @@ uint8_t     i;
 
 int main(void){
     measure_status_source_t   meas_stat;
-    display_mode_source_t     disp_mode = SINGLE_LINE;
+    display_mode_source_t     disp_mode = NONE;
 
     uint16_t    shot_count = 0;     //ショットカウントは1から。0は入力無し
 
@@ -136,24 +139,6 @@ int main(void){
     printf(">temp: %5.1f%cC\n", temp_ave_degree_c, 0xdf);
     printf("\n");
     
-#if TEST_COM_ESP32
-    //ESP32 title TEST
-    sprintf(buf, "\n\n");
-    UART2_Write(buf, strlen(buf));
-    sprintf(buf, "********************\n");
-    UART2_Write(buf, strlen(buf));
-    sprintf(buf, " SEND to ESP32      \n");
-    UART2_Write(buf, strlen(buf));
-    sprintf(buf, "                    \n");
-    UART2_Write(buf, strlen(buf));
-    sprintf(buf, "          ver.%s\n", version);
-    UART2_Write(buf, strlen(buf));
-    sprintf(buf, "********************\n");
-    UART2_Write(buf, strlen(buf));
-    sprintf(buf, "\n");
-    UART2_Write(buf, strlen(buf));
-#endif
-    
     measure_init();
     data_clear(); 
     
@@ -165,14 +150,14 @@ int main(void){
         if (sensor_count != 0){
             //センサー入力あり
             LED_BLUE_Set();
-            CORETIMER_DelayUs(800);        //つづいての入力を待つ時間
+            CORETIMER_DelayUs(800);        //つづいての入力信号2～4を待つ時間
 
             ICAP1_Disable();
             ICAP2_Disable();
             ICAP3_Disable();
             ICAP4_Disable();
             TMR2_Stop();
-            impact_PT4_reset();
+            impact_PT4_reset();             //着弾センサ出力オフ->タマモニへいく信号
             
             shot_count++;
             ring_pos++;
@@ -182,12 +167,10 @@ int main(void){
             }
             set_temp_degree_c();          
             meas_stat = measure_main();
-            
-            CORETIMER_DelayMs(100);     //タマモニのデバッガーへの出力が終わるまで間を開ける
             result_disp(shot_count, meas_stat, disp_mode);
             log_data_make(shot_count);
             
-            CORETIMER_DelayMs(100);     //1行表示の時まだ余韻が残っていて再トリガしてしまうので待つ
+            CORETIMER_DelayMs(100);     //1行表示の時まだ処理が残っていて再トリガしてしまうので待つ
             data_clear();
             LED_BLUE_Clear();
         }
@@ -206,9 +189,19 @@ int main(void){
                 CORETIMER_DelayMs(1);   //受信待ち 9600bps 1データは約1ms
             }
             
+            //そのままESPへ送る
+            while(!UART2_TransmitterIsReady());
+            UART2_Write(buf, strlen((char*)buf));
+            
+            
             if ((buf[0] == 'R') && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0)){
                 //ようは’R'が1文字だけ入力したとき
+                UART2_WriteByte(',');   //endmark
                 switch(disp_mode){
+                    case NONE:
+                        disp_mode = SINGLE_LINE;
+                        printf(">single line mode\n");
+                        break;
                     case SINGLE_LINE:
                         disp_mode = FULL_DEBUG;
                         printf(">debug mode\n");
@@ -219,11 +212,11 @@ int main(void){
                         csv_title();
                         break;
                     case CSV_DATA:
-                        disp_mode = SINGLE_LINE;
-                        printf(">single line mode\n");
+                        disp_mode = NONE;
+                        printf(">no output mode\n");
                         break;
                     default:
-                        disp_mode = SINGLE_LINE;    //failsafe
+                        disp_mode = NONE;    //failsafe
                         break;
                 }
             }

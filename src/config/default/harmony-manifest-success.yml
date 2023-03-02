@@ -4,15 +4,15 @@
 
 
 project: ElectricTargetProject_v3
-creation_date: 2023-01-22T16:28:28.128+09:00[Asia/Tokyo]    # ISO 8601 format: https://www.w3.org/TR/NOTE-datetime
+creation_date: 2023-02-20T19:37:11.404+09:00[Asia/Tokyo]    # ISO 8601 format: https://www.w3.org/TR/NOTE-datetime
 operating_system: Mac OS X
 mhc_mode: IDE            # [IDE|Standalone|Headless]
-mhc_version: v3.8.3
-mplabx_version: v6.05        # if MPLAB X plugin only
+mhc_version: v3.8.5
+mplabx_version: v6.00        # if MPLAB X plugin only
 plugin_version: v3.6.4        # if MPLAB X plugin only
 compiler: XC32 (2.50)
 
 modules:
-    - {name: "csp", version: "v3.11.0"}
-    - {name: "dev_packs", version: "v3.11.1"}
+    - {name: "csp", version: "v3.14.0"}
+    - {name: "dev_packs", version: "v3.14.0"}
 

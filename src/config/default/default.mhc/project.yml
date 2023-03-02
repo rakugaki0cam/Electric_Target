@@ -6,13 +6,13 @@ files:
   security: NON_SECURE
   type: SOURCE
   userChecksum: 99DB74296DF9943C474F4F03A700C790
-- generatedChecksum: FC956E3768A2D7A6841549D446D6D53A
+- generatedChecksum: 8B3856D5EE854CEF6CDF60AF92A8968B
   logicalPath: config/default
   name: initialization.c
   physicalPath: ''
   security: NON_SECURE
   type: SOURCE
-  userChecksum: FC956E3768A2D7A6841549D446D6D53A
+  userChecksum: 8B3856D5EE854CEF6CDF60AF92A8968B
 - generatedChecksum: 4087C0EFD81894188F43CC42AD851B3F
   logicalPath: config/default
   name: interrupts.c
@@ -104,27 +104,27 @@ files:
   security: NON_SECURE
   type: SOURCE
   userChecksum: 162C75910858B5214D2380CCDDB42CA7
-- generatedChecksum: C8704973CD57974F4A209DD1A9E15B6E
+- generatedChecksum: 36CCCB76E79F315CD530EA380ED31B6E
   logicalPath: config/default/peripheral/uart
   name: plib_uart1.c
   physicalPath: peripheral/uart
   security: NON_SECURE
   type: SOURCE
-  userChecksum: 402E03E343DDAE01BA49273B3C68F4D1
-- generatedChecksum: AC3CBC998E87ECE60CBBEF595C161953
+  userChecksum: 2EF3A135EEE234AA0C359881C49DB084
+- generatedChecksum: EE6945B480BF8F2E21E9811DEE87F82B
   logicalPath: config/default/peripheral/uart
   name: plib_uart2.c
   physicalPath: peripheral/uart
   security: NON_SECURE
   type: SOURCE
-  userChecksum: AC3CBC998E87ECE60CBBEF595C161953
-- generatedChecksum: A636C701B81D51E1D15E7ECB7F0FDE65
+  userChecksum: EE6945B480BF8F2E21E9811DEE87F82B
+- generatedChecksum: 42A948E504602741B0D592C55FCD9A7B
   logicalPath: config/default/stdio
   name: xc32_monitor.c
   physicalPath: stdio
   security: NON_SECURE
   type: SOURCE
-  userChecksum: A636C701B81D51E1D15E7ECB7F0FDE65
+  userChecksum: 42A948E504602741B0D592C55FCD9A7B
 - generatedChecksum: 19AFB2CE0A11BE52E8E8BA4D98C905BE
   logicalPath: config/default
   name: definitions.h

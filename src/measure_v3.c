@@ -33,13 +33,19 @@ void measure_init(void){
     
     sensor_offset_calc(center_offset_x, center_offset_y);
     log_title();
+    
+    //ターゲットLCDクリアコマンド送信
+    uint8_t clear_command[] = "TARGET_CLEAR END ,";
+    while(!UART2_TransmitterIsReady());
+    UART2_Write(clear_command, strlen((char*)clear_command));
+    
 }
 
 
 uint8_t measure_main(void){
     //測定メイン～計算
-    measure_status_source_t   meas_stat = MEASURE_STATUS_OK;
-    
+    measure_status_source_t     meas_stat = MEASURE_STATUS_OK;
+    calc_status_source_t        ans;
     //測定データ順を確認修正
     input_order_check();
     //測定データを計算、代入
@@ -49,11 +55,15 @@ uint8_t measure_main(void){
         result.radius0_mm = 999.99;
         result.impact_pos_x_mm = 999.99;
         result.impact_pos_y_mm = 999.99;
+        result.delay_time0_msec = 0;        //タマモニでのエラー判定に使用
         return meas_stat;
     }
     //座標の計算
-    if (calc_locate_xy()){       
-        //エラーの時は
+    ans = calc_locate_xy();
+    //printf("calc status:%d", ans);
+    if (CALC_STATUS_OK == ans){       
+        //エラーの時
+        meas_stat = MEASURE_STATUS_ERROR;
         
     }
     
@@ -147,13 +157,16 @@ uint8_t measure_data_assign(void){
 void result_disp(uint16_t shot_count, measure_status_source_t meas_stat, uint8_t mode){ 
     //測定結果、計算結果の表示
     
-    esp32wifi_data_send();
-    CORETIMER_DelayMs(30);     //間を開ける
+    esp32wifi_data_send();  //着弾表示を早くする
+    while(!UART2_TransmitComplete());
     
-    tamamoni_data_send();
+    CORETIMER_DelayMs(100); //RS485へ送信の前に間を開けるタマモニからデバッガへprintfしているかもしれないため
+    tamamoni_data_send();   //LAN
+    
     CORETIMER_DelayMs(30);  //データ送信の間をつくる
-    
     switch(mode){
+        case NONE:
+            break;
         case SINGLE_LINE:
             single_line(shot_count, meas_stat);
             break;
@@ -173,17 +186,7 @@ void result_disp(uint16_t shot_count, measure_status_source_t meas_stat, uint8_t
 //
 void tamamoni_data_send(void){
     //タマモニへ座標データ他を送信
-    
-    //header
-    printf("BINX0Y0dT ");
-    //
-    printf("%8.3f ", result.impact_pos_x_mm);
-    printf("%8.3f ", result.impact_pos_y_mm);
-    printf("%8.4f ", result.delay_time0_msec);
-    //footer
-    printf("END ");
-    //
-    printf(",");
+    printf("BINX0Y0dT %8.3f %8.3f %8.4f END ,", result.impact_pos_x_mm, result.impact_pos_y_mm, result.delay_time0_msec);
 }
 
 
@@ -192,7 +195,8 @@ void esp32wifi_data_send(void){
     //WiFi & target LCD
     char    buf[255];
 
-    sprintf(buf, "ESP32 %8.3f %8.3f %8.4f END ,", result.impact_pos_x_mm, result.impact_pos_y_mm, result.delay_time0_msec);
+    sprintf(buf, "BINX0Y0dT %8.3f %8.3f %8.4f END ,", result.impact_pos_x_mm, result.impact_pos_y_mm, result.delay_time0_msec);
+    while(!UART2_TransmitterIsReady());
     UART2_Write(buf, strlen(buf));
 }
 

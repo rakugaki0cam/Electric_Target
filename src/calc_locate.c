@@ -21,10 +21,10 @@
 
 //GLOBAL
 sensor_data_t   sensor_4mic[NUM_SENSOR]= {
-    {SENSOR1, 0xff, -SENSOR_HORIZONTAL_SPACING, -SENSOR_VERTICAL_SPACING, SENSOR_DEPTH_OFFSET, 0, 0, 0, 0, 0, 0},  //センサー1 左下
-    {SENSOR2, 0xff,  SENSOR_HORIZONTAL_SPACING, -SENSOR_VERTICAL_SPACING, SENSOR_DEPTH_OFFSET, 0, 0, 0, 0, 0, 0},  //センサー2 右下
-    {SENSOR3, 0xff, -SENSOR_HORIZONTAL_SPACING,  SENSOR_VERTICAL_SPACING, SENSOR_DEPTH_OFFSET, 0, 0, 0, 0, 0, 0},  //センサー3 左上
-    {SENSOR4, 0xff,  SENSOR_HORIZONTAL_SPACING,  SENSOR_VERTICAL_SPACING, SENSOR_DEPTH_OFFSET, 0, 0, 0, 0, 0, 0}   //センサー4 右上
+    {SENSOR1, 0xff, -SENSOR_HORIZONTAL_SPACING, -SENSOR_VERTICAL_SPACING, SENSOR_DEPTH_OFFSET, 0, 0, 0, 0, 0, 0, 0},    //センサー1 左下
+    {SENSOR2, 0xff,  SENSOR_HORIZONTAL_SPACING, -SENSOR_VERTICAL_SPACING, SENSOR_DEPTH_OFFSET, 0, 0, 0, 0, 0, 0, 0},    //センサー2 右下
+    {SENSOR3, 0xff, -SENSOR_HORIZONTAL_SPACING,  SENSOR_VERTICAL_SPACING, SENSOR_DEPTH_OFFSET, 0, 0, 0, 0, 0, 0, 0},    //センサー3 左上
+    {SENSOR4, 0xff,  SENSOR_HORIZONTAL_SPACING,  SENSOR_VERTICAL_SPACING, SENSOR_DEPTH_OFFSET, 0, 0, 0, 0, 0, 0, 0},    //センサー4 右上
 };
 
 impact_data_t   result;         //計算結果
@@ -38,7 +38,7 @@ sensor_data_t   tmp_3[3];       //センサデータ受け渡し用
 
 
 //
-uint8_t calc_locate_xy(void){
+calc_status_source_t calc_locate_xy(void){
     //着弾座標の計算
     //出力　result:計算結果座標x,y,r  グローバル
     //     stat:0-正常終了　1-エラー
@@ -59,24 +59,25 @@ uint8_t calc_locate_xy(void){
     result.status = 0;
 
     calc_stat = calc_of_3sensor();   //座標を計算
-    if (calc_stat != CALC_STATUS_OK){
+    if (CALC_STATUS_OK == calc_stat){
+        //計算OK
+        //着弾からセンサオンまでの遅れ時間(着弾時刻計算用)
+        result.delay_time0_msec = impact_time_msec(result.radius0_mm); 
+    }else {
         //計算値が不可だった場合
         result.radius0_mm = 999.99;
         result.impact_pos_x_mm = 999.99;
         result.impact_pos_y_mm = 999.99;
-    }else {
-        //OK            
+        result.delay_time0_msec = 0;        //タマモニでのエラー判定に使用
+        //calc_stat = CALC_STATUS_CAL_ERROR;
     }
-    
-    //着弾からセンサオンまでの遅れ時間(着弾時刻計算用)
-    result.delay_time0_msec = impact_time_msec(result.radius0_mm);      
             
     return calc_stat;
 }
 
 
 //
-uint8_t calc_of_3sensor(void){
+calc_status_source_t calc_of_3sensor(void){
     //tmp_3の3センサデータから座標値を計算
     //Output result:計算値
     //       calc_stat:状態　0-OK,

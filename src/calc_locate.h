@@ -100,10 +100,10 @@ extern const float      delay_b;
 
 
 //
-uint8_t     calc_locate_xy(void);
+calc_status_source_t     calc_locate_xy(void);
 
 //
-uint8_t     calc_of_3sensor(void);
+calc_status_source_t     calc_of_3sensor(void);
 uint8_t     asign_3sensor(void);
 void        calc_sensor_pattern(void);
 //calculation

@@ -1,2 +1,4 @@
 electric target
-//電子標的
+
+add ESP32 ESP-NOW
+

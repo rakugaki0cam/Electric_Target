@@ -33,9 +33,10 @@ typedef enum {
 
 //画面表示モード
 typedef enum {
-    SINGLE_LINE = 0,                        //画面表示:1行/1発
-    FULL_DEBUG  = 1,                        //画面表示:デバッグ用フル表示
-    CSV_DATA    = 2                         //CSVデータ出しー表計算用
+    NONE,                   //出力なし
+    SINGLE_LINE,            //画面表示:1行/1発
+    FULL_DEBUG,             //画面表示:デバッグ用フル表示
+    CSV_DATA,               //CSVデータ出しー表計算用
 } display_mode_source_t;
 
 
