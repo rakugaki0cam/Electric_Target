@@ -61,7 +61,7 @@ uint8_t measure_main(void){
     //座標の計算
     ans = calc_locate_xy();
     //printf("calc status:%d", ans);
-    if (CALC_STATUS_OK == ans){       
+    if (CALC_STATUS_OK != ans){       
         //エラーの時
         meas_stat = MEASURE_STATUS_ERROR;
         

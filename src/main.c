@@ -152,7 +152,7 @@ int main(void){
         if (sensor_count != 0){
             //センサー入力あり
             LED_BLUE_Set();
-            CORETIMER_DelayUs(800);        //つづいての入力信号2～4を待つ時間
+            CORETIMER_DelayUs(800);        //つづいての入力信号を待つ時間
 
             ICAP1_Disable();
             ICAP2_Disable();

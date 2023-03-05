@@ -49,12 +49,12 @@
 void CVR_Initialize (void)
 {
 	/*Setup CVRCON		*/
-	/* CVR 		= 2	*/
+	/* CVR 		= 3	*/
 	/* CVRSS 	= 1	*/
 	/* CVRR		= 1	*/
 	/* CVROE 	= true	*/
 	
-	CVRCON = 0x72;
+	CVRCON = 0x73;
 }
 
 void CVR_Start (void)

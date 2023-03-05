@@ -48,13 +48,13 @@ files:
   security: NON_SECURE
   type: SOURCE
   userChecksum: F8BB2BAA74068083A80E6E229BBCF3E3
-- generatedChecksum: FF91CEBCC992FCB4D30339E596F9655E
+- generatedChecksum: 1BBEDFDA52D662B980A9A4CB42440207
   logicalPath: config/default/peripheral/cvr
   name: plib_cvr.c
   physicalPath: peripheral/cvr
   security: NON_SECURE
   type: SOURCE
-  userChecksum: FF91CEBCC992FCB4D30339E596F9655E
+  userChecksum: 1BBEDFDA52D662B980A9A4CB42440207
 - generatedChecksum: FE8D8BD745262452E9976C01A587919C
   logicalPath: config/default/peripheral/evic
   name: plib_evic.c
@@ -110,7 +110,7 @@ files:
   physicalPath: peripheral/uart
   security: NON_SECURE
   type: SOURCE
-  userChecksum: 2EF3A135EEE234AA0C359881C49DB084
+  userChecksum: 1B3B4EBDB218B5874226446A2CD182C6
 - generatedChecksum: EE6945B480BF8F2E21E9811DEE87F82B
   logicalPath: config/default/peripheral/uart
   name: plib_uart2.c

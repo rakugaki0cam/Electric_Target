@@ -29,7 +29,7 @@
 #define     SENSOR2                     1
 #define     SENSOR3                     2
 #define     SENSOR4                     3
-#define     NUM_PATTERN                 4           //センサー4個から3個選ぶパターンの数 4C3 = 4!-3! = 4x3x2x1 - 3x2x1 = 4
+#define     NUM_PATTERN                 4           //センサー4個から3個選ぶパターンの数 4C3 = 4!/3! = 4x3x2x1 / 3x2x1 = 4
 #define     SENSOR_HORIZONTAL_SPACING   90.3        //センサー横幅　180.6 (マイクφ9.7)　測定値
 #define     SENSOR_VERTICAL_SPACING     131.9       //センサー縦幅　251.8(フレーム間隔)+5+5(フレーム～マイク上面)+1+1(マイク上面～振動板)　測定値
 #define     TARGET_WIDTH_HALF           105         //マト板横幅の1/2
