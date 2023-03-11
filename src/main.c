@@ -1,5 +1,7 @@
  /*
   * 電子ターゲット
+  * 
+  * V3  ESP32搭載LCD7インチを追加してタマモニと無線接続
   * V2  1-3番目に入力したセンサーのみで計算
   *     あんまりよくない
   * 
@@ -56,10 +58,11 @@
   * 2023.02.21  ver.3.12    着弾表示が遅い -> ESPへのデータ送信を早く。LANは少し経ってから送信
   * 2023.02.25  ver.3.13    着弾データ出力(シリアルモニタ)無しを追加。通常は無しにする。
   * 2023.03.02              GitHubへpushできた。(アクセストークンへの権限設定repo)
+  * 2023.03.10  ver.3.14    コンパレータスレッショルドをDEBUGger　Y:+, O:- で変更できるようにした。
   * 
   * 
   * 計算値エラーの時の戻り値を整理しないといけない。
-  * 
+  * 左上に着弾センサ順＃341の時?にセンサ1の遅れ距離が約30mmにすり替えられている感じ->y=18くらいに横一列になってしまう???
   * 
   * 
 */
@@ -67,12 +70,6 @@
 #include "header.h"
 
 
-//コンパレータ閾値設定
-#define     V_DD        3.3                     //電源電圧
-#define     V_TH        0.200                   //コンパレータ閾値 default:0.200V
-#define     RA          1000                    //分圧抵抗+側
-#define     RB          1000                    //分圧抵抗-側
-#define     V_REF       V_DD * RB / (RA + RB)   //CVref+ 分圧Ra:(Ra+Rb)
 //着弾タイミングのフォールエッジをタマモニに送る
 #define     impact_PT4_set()    PT4_Clear()     //着弾センサ信号出力
 #define     impact_PT4_reset()  PT4_Set()       //着弾センサ信号クリア
@@ -83,7 +80,7 @@
 uint16_t    ring_pos = 0;                   //ログデータポインタ
 
 //LOCAL
-uint8_t     version[] = "3.13";             //バージョンナンバー
+uint8_t     version[] = "3.14";             //バージョンナンバー
 uint8_t     sensor_count;                   //センサ入力順番のカウント
 bool        flag_1sec = 0;                  //1秒タイマー割込
 char        buf[BUF_NUM];                   //UARTデータ読込バッファ
@@ -96,10 +93,8 @@ uint8_t     i;
 int main(void){
     measure_status_source_t   meas_stat;
     display_mode_source_t     disp_mode = NONE;
-
     uint16_t    shot_count = 0;     //ショットカウントは1から。0は入力無し
-
-    
+    uint8_t     step = 3;           //コンパレータ閾電圧のステップ1～23
     
 #if TX_TEST
     uint16_t    data;
@@ -117,7 +112,7 @@ int main(void){
     TMR2_CallbackRegister(timer2_1sec_int, NULL);
     
     //コンパレータ電圧出力
-    CVR_UpdateValue((uint8_t)(V_TH / (V_REF / 24) + 0.99));      //切り上げ
+    CVR_UpdateValue(step);
     CVR_Start();
     
     //温度
@@ -139,6 +134,7 @@ int main(void){
     printf("********************\n");
     printf(">single line mode\n");
     printf(">temp: %5.1f%cC\n", temp_ave_degree_c, 0xdf);
+    printf(">Compa:%6.3fV th\n", cvr_step_to_v(step));
     printf("\n");
     
     measure_init();
@@ -195,7 +191,7 @@ int main(void){
             while(!UART2_TransmitterIsReady());
             UART2_Write(buf, strlen((char*)buf));
             
-            
+            //DEBUGger出力モードの切り替え
             if ((buf[0] == 'R') && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0)){
                 //ようは’R'が1文字だけ入力したとき
                 UART2_WriteByte(',');   //endmark
@@ -222,6 +218,30 @@ int main(void){
                         break;
                 }
             }
+            //コンパレータスレッショルド値の変更
+            if ((buf[0] == 'O') && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0)){
+                //ようは’O'が1文字だけ入力したとき
+                UART2_WriteByte(',');   //endmark
+                step++;
+                if (step > 15){
+                    step = 15;
+                }
+                CVR_UpdateValue(step);
+                CVR_Start();
+                printf(">Comparator \n  Vth = %6.3fV\n", cvr_step_to_v(step));
+            }
+            if ((buf[0] == 'Y') && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0)){
+                //ようは’Y'が1文字だけ入力したとき
+                UART2_WriteByte(',');   //endmark
+                step--;
+                if (step < 1){
+                    step = 1;
+                }
+                CVR_UpdateValue(step);
+                CVR_Start();
+                printf(">Comparator \n  Vth = %6.3fV\n", cvr_step_to_v(step));
+            }    
+    
             UART1_ErrorGet();
             //バッファクリア
             for(i = 0; i < BUF_NUM; i++){
@@ -321,6 +341,23 @@ void speaker(void){
     CORETIMER_DelayUs(125);
     
 }
+
+float cvr_step_to_v(uint8_t s){
+    //CVR設定ステップ値 から電圧を計算する
+#define     V_DD        3.3                     //電源電圧
+#define     RA          1000                    //分圧抵抗+側
+#define     RB          1000                    //分圧抵抗-側
+#define     V_REF       V_DD * RB / (RA + RB)   //CVref+ 分圧Ra:(Ra+Rb)
+#define     STEP        24                      //DACステップ数
+    
+    return (float)s * V_REF / STEP;
+    
+    //大体の電圧からステップを求める
+    //#define     V_TH        0.200                     //コンパレータ閾値 default:0.200V
+    //step = (uint8_t)(v_th / (V_REF / STEP) + 0.99);   //切り上げ　値1～24
+}
+
+
 
 
 /*******************************************************************************

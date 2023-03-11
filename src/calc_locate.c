@@ -20,6 +20,8 @@
 
 
 //GLOBAL
+//あとでmeasure_v3.cへ移動
+//こちらには諸元的なものはなしとする
 sensor_data_t   sensor_4mic[NUM_SENSOR]= {
     {SENSOR1, 0xff, -SENSOR_HORIZONTAL_SPACING, -SENSOR_VERTICAL_SPACING, SENSOR_DEPTH_OFFSET, 0, 0, 0, 0, 0, 0, 0},    //センサー1 左下
     {SENSOR2, 0xff,  SENSOR_HORIZONTAL_SPACING, -SENSOR_VERTICAL_SPACING, SENSOR_DEPTH_OFFSET, 0, 0, 0, 0, 0, 0, 0},    //センサー2 右下
@@ -196,10 +198,11 @@ uint8_t apollonius_3circle_xyr(void){
     uint8_t i;
     calc_status_source_t  calc_stat = CALC_STATUS_OK;
     
-    float   x[4], y[4], z[4], dr[4];
+    float   x[4], y[4], z[4], dr[4];    //添字は1,2,3を使用
     float   a[4], b[4], c[4], d[4];
     float   e, f[3], g[3];
     float   aa, bb, cc;
+    float   q, r0;
     
     //データ代入
     for (i = 0; i < 3; i++){
@@ -240,7 +243,8 @@ uint8_t apollonius_3circle_xyr(void){
     bb = 2 * f[1] * (g[1] - x[1]) + 2 * f[2] * (g[2] - y[1]) - 2 * dr[1];
     cc = (g[1] - x[1]) * (g[1] - x[1]) + (g[2] - y[1]) * (g[2] - y[1]) + z[0] * z[0] - dr[1] * dr[1];
     
-    if ((bb * bb - 4 * aa * cc) < 0){
+    q = bb * bb - 4 * aa * cc;
+    if (q < 0){
         //error　解の公式の条件
         calc_stat = CALC_STATUS_QUAD_F;
         result.status = calc_stat;
@@ -248,14 +252,14 @@ uint8_t apollonius_3circle_xyr(void){
     }
     
     //二次方程式を解いてx,y,rを求める計算
-    result.radius0_mm = (-bb + sqrt(bb * bb - 4 * aa * cc)) / (2 * aa);
-    if (result.radius0_mm < 0){
+    r0 = (-bb - sqrt(q)) / (2 * aa);
+    if (r0 < 0){
         //半径が負の方は不採用
-        result.radius0_mm = (-bb - sqrt(bb * bb - 4 * aa * cc)) / (2 * aa);
+        r0 = (-bb + sqrt(q)) / (2 * aa);
     }
-    
-    result.impact_pos_x_mm = f[1] * result.radius0_mm + g[1];
-    result.impact_pos_y_mm = f[2] * result.radius0_mm + g[2];
+    result.radius0_mm = r0;
+    result.impact_pos_x_mm = f[1] * r0 + g[1];
+    result.impact_pos_y_mm = f[2] * r0 + g[2];
     
     return calc_stat;
 }

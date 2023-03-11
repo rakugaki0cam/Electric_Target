@@ -28,8 +28,8 @@ typedef enum {
 
 void measure_init(void){
     //初期設定
-    float       center_offset_x = -0.1;     //マト板センターラインとセンサーのズレ///////////////////////////
-    float       center_offset_y = +1.0;
+    float       center_offset_x = 0;//-0.1;     //マト板センターラインとセンサーのズレ///////////////////////////
+    float       center_offset_y = 0;//+1.0;
     
     sensor_offset_calc(center_offset_x, center_offset_y);
     log_title();
@@ -108,15 +108,15 @@ uint8_t measure_data_assign(void){
     //測定データを代入
     //出力: 有効測定センサー数
     measure_status_source_t   sensor_status = SENSOR_STATUS_OK;
-    uint8_t     sensor_number;
+    uint8_t     num;                        //センサー#0-3
     uint8_t     zero;                       //最初にオンしたセンサーの番号
     uint8_t     valid_sensor_count = 0;     //有効測定センサー数のカウント
     
-    for (sensor_number = 0; sensor_number < NUM_SENSOR; sensor_number++){
-        switch(sensor_4mic[sensor_number].input_order){
+    for (num = 0; num < NUM_SENSOR; num++){
+        switch(sensor_4mic[num].input_order){
             case 0:
                 //最初にオンしたセンサー番号
-                zero = sensor_number;
+                zero = num;
                 
             case 1 ... (NUM_SENSOR - 1):
                 valid_sensor_count ++;
@@ -131,20 +131,16 @@ uint8_t measure_data_assign(void){
                 sensor_status = SENSOR_STATUS_ERROR;
                 break;
         }
-        sensor_4mic[sensor_number].status = sensor_status;
+        sensor_4mic[num].status = sensor_status;
     }
     
     //タイマカウント差、時間差、距離の計算と代入
-    for (sensor_number = 0; sensor_number < NUM_SENSOR; sensor_number++){
-        if (SENSOR_STATUS_OK == sensor_4mic[sensor_number].status){
+    for (num = 0; num < NUM_SENSOR; num++){
+        if (SENSOR_STATUS_OK == sensor_4mic[num].status){
             //ステータスOKのときだけ計算、代入
-            sensor_4mic[sensor_number].delay_cnt 
-                = sensor_4mic[sensor_number].timer_cnt - sensor_4mic[zero].timer_cnt;   //カウント差
-            sensor_4mic[sensor_number].delay_time_usec
-                = delay_time_usec(sensor_4mic[sensor_number].delay_cnt);                //カウント値→時間
-            sensor_4mic[sensor_number].distance_mm
-                = dist_delay_mm(sensor_4mic[sensor_number].delay_time_usec
-                - sensor_4mic[sensor_number].sensor_delay_usec);   //時間→距離
+            sensor_4mic[num].delay_cnt = sensor_4mic[num].timer_cnt - sensor_4mic[zero].timer_cnt;                                              //カウント差
+            sensor_4mic[num].delay_time_usec = delay_time_usec(sensor_4mic[num].delay_cnt);                                                     //カウント値→時間
+            sensor_4mic[num].distance_mm = dist_delay_mm(sensor_4mic[num].delay_time_usec - sensor_4mic[num].sensor_delay_usec);      //時間→距離
         }
         
     }
@@ -244,7 +240,7 @@ void full_debug(uint16_t shot_count, measure_status_source_t meas_stat){
     for (i = 0; i < NUM_SENSOR; i++){
         sens_stat = sensor_4mic[i].status;
         if (SENSOR_STATUS_OK == sens_stat){
-            printf("s%1d %7.2fus %5.1fmm\n", i + 1, sensor_4mic[i].delay_time_usec, sensor_4mic[i].distance_mm);
+            printf("s%1d %6.2fus %6.2fmm\n", i + 1, sensor_4mic[i].delay_time_usec, sensor_4mic[i].distance_mm);
         }else{
             //検出していない時
             printf("s%1d  ---.--us\n", i + 1);
@@ -256,7 +252,7 @@ void full_debug(uint16_t shot_count, measure_status_source_t meas_stat){
     }
     
     //使用センサー番号
-    printf("adopted sensor#%3x\n",result.pattern); 
+    printf("selected sensor #%3x\n",result.pattern); 
     //計算結果
     printf("   x0     y0     r0 \n");
     printf("%6.1f %6.1f %6.1f\n", result.impact_pos_x_mm, result.impact_pos_y_mm, result.radius0_mm);
@@ -362,11 +358,11 @@ void data_clear(void){
 void    sensor_offset_calc(float dx, float dy){
     //マト板のセンターラインとセンサー位置のズレを補正
     //センサーの物理位置のズレ補正
-    float   sensor1_offset_x = -0.1;
+    float   sensor1_offset_x = 0;//-0.1;
     float   sensor1_offset_y = 0;
     float   sensor1_offset_z = 0;
 
-    float   sensor2_offset_x = -0.1;
+    float   sensor2_offset_x = 0;//-0.1;
     float   sensor2_offset_y = 0;
     float   sensor2_offset_z = 0;
 

@@ -43,7 +43,7 @@ void        sensor4_detect(uintptr_t);
 void        timer2_1sec_int(uint32_t, uintptr_t);
 //
 void        speaker(void);
-
+float       cvr_step_to_v(uint8_t);
 
 #endif	//HEADER_H
 

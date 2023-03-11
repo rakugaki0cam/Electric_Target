@@ -46,7 +46,7 @@ typedef struct {
     float       sensor_z_mm;
     uint32_t    timer_cnt;          //タイマ測定値
     uint32_t    delay_cnt;          //タイマ差値
-    float       delay_time_usec;    //到達時間差測定値
+    float      delay_time_usec;    //到達時間差測定値
     float       sensor_delay_usec;  //センサ遅れ時間(推定)
     float       d_time_corr_usec;   //到達時間差補正後
     float       distance_mm;        //距離差
