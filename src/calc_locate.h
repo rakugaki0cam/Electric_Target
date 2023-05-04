@@ -6,6 +6,7 @@
  * 
  *  2022.03.24
  * 
+ *  2023.05.04 boxed センサー位置追加
  *  
  * File:   
  * Author: 
@@ -24,18 +25,33 @@
 
 
 //GLOBAL
-#define     NUM_SENSOR                  4           //センサー数
-#define     SENSOR1                     0           //センサ呼び番号とプログラム中の添字
-#define     SENSOR2                     1
-#define     SENSOR3                     2
-#define     SENSOR4                     3
-#define     NUM_PATTERN                 4           //センサー4個から3個選ぶパターンの数 4C3 = 4!/3! = 4x3x2x1 / 3x2x1 = 4
-#define     SENSOR_HORIZONTAL_SPACING   90.3        //センサー横幅　180.6 (マイクφ9.7)　測定値
-#define     SENSOR_VERTICAL_SPACING     131.9       //センサー縦幅　251.8(フレーム間隔)+5+5(フレーム～マイク上面)+1+1(マイク上面～振動板)　測定値
+#define     NUM_SENSOR      4       //センサー数
+#define     SENSOR1         0       //センサ呼び番号とプログラム中の添字
+#define     SENSOR2         1
+#define     SENSOR3         2
+#define     SENSOR4         3
+#define     NUM_PATTERN     4       //センサー4個から3個選ぶパターンの数 4C3 = 4!/3! = 4x3x2x1 / 3x2x1 = 4
+
+//sensor mic position
+//#define SENSOR_POSITION_OPEN    //~2023.05.04 センサーマイクを的板側に設置
+#define SENSOR_POSITION_BOXED   //センサーマイクとLCDを箱に一体化
+
+#ifdef SENSOR_POSITION_OPEN
+    #define SENSOR_HORIZONTAL_SPACING   90.3        //センサー横幅　180.6 (マイクφ9.7)　測定値
+    #define SENSOR_VERTICAL_SPACING     131.9       //センサー縦幅　251.8(フレーム間隔)+5+5(フレーム～マイク上面)+1+1(マイク上面～振動板)　測定値
+    #define SENSOR_DEPTH_OFFSET         6.0         //塩ビ板t2　音の発生源は塩ビ板の裏面??
+#else
+    #ifdef SENSOR_POSITION_BOXED
+        #define SENSOR_HORIZONTAL_SPACING   69.0        //センサー横幅　138.0
+        #define SENSOR_VERTICAL_SPACING     87.0        //センサー縦幅　174.0
+        #define SENSOR_DEPTH_OFFSET         15.5        //塩ビ板t2　音の発生源は塩ビ板の裏面とする
+    #endif
+#endif
+//target seat
 #define     TARGET_WIDTH_HALF           105         //マト板横幅の1/2
 #define     TARGET_HEIGHT_HALF          120         //マト板縦高さの1/2
 #define     R_MAX                       340         //ほぼ対角長
-#define     SENSOR_DEPTH_OFFSET         6           //塩ビ板t2　音の発生源は塩ビ板の裏面??
+
 
 //センサ情報と測定値
 typedef struct {
