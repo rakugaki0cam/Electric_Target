@@ -60,10 +60,18 @@
   * 2023.03.02              GitHubへpushできた。(アクセストークンへの権限設定repo)
   * 2023.03.10  ver.3.14    コンパレータスレッショルドをDEBUGger　Y:+, O:- で変更できるようにした。
   * 2023.05.04  ver.3.20    箱入れによるセンサーマイク位置変更対応
+  * 2023.05.04  ver.3.21    センサーの外側の計算がエラー???
+  * 
+  * V4_edition
+  * 2023.08.26  ver.4.00    座標計算値が異常な時、異常センサ値を1つ除外して、4つの座標から正しい座標を選択する。
+  *                         → 判定が難しい
+  *                         まだ書き込まない。v3.21で運用中。
   * 
   * 
   * 計算値エラーの時の戻り値を整理しないといけない。
-  * 左上に着弾センサ順＃341の時?にセンサ1の遅れ距離が約30mmにすり替えられている感じ->y=18くらいに横一列になってしまう???
+  * 左上に着弾センサ順＃341の時?にセンサ1の遅れ距離が約30mmにすり替えられている感じ->y=18くらいに横一列になってしまう???　->V4にて対策開始
+  * （原因はマト板が衝撃で動くせいでは???）
+  * 
   * 
   * 
 */
@@ -81,7 +89,7 @@
 uint16_t    ring_pos = 0;                   //ログデータポインタ
 
 //LOCAL
-uint8_t     version[] = "3.20";             //バージョンナンバー
+uint8_t     version[] = "4.00";             //バージョンナンバー
 uint8_t     sensor_count;                   //センサ入力順番のカウント
 bool        flag_1sec = 0;
         //1秒タイマー割込
@@ -135,8 +143,8 @@ int main(void){
     printf(" R:disp mode change \n");
     printf("********************\n");
     printf(">single line mode\n");
-    printf(">temp: %5.1f%cC\n", temp_ave_degree_c, 0xdf);
-    printf(">Compa:%6.3fV th\n", cvr_step_to_v(step));
+    printf(">temp: %5.1f%cC\n", (double)temp_ave_degree_c, 0xdf);
+    printf(">Compa:%6.3fV th\n", (double)cvr_step_to_v(step));
     printf("\n");
     
     measure_init();
@@ -230,7 +238,7 @@ int main(void){
                 }
                 CVR_UpdateValue(step);
                 CVR_Start();
-                printf(">Comparator \n  Vth = %6.3fV\n", cvr_step_to_v(step));
+                printf(">Comparator \n  Vth = %6.3fV\n", (double)cvr_step_to_v(step));
             }
             if ((buf[0] == 'Y') && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0)){
                 //ようは’Y'が1文字だけ入力したとき
@@ -241,7 +249,7 @@ int main(void){
                 }
                 CVR_UpdateValue(step);
                 CVR_Start();
-                printf(">Comparator \n  Vth = %6.3fV\n", cvr_step_to_v(step));
+                printf(">Comparator \n  Vth = %6.3fV\n", (double)cvr_step_to_v(step));
             }    
     
             UART1_ErrorGet();

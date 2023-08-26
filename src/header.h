@@ -30,6 +30,8 @@
 #include "measure_v3.h"
 
 
+//#define float  long double
+
 //GLOBAL
 extern uint8_t     sensor_count;            //センサ入力順番のカウント
 extern uint16_t    ring_pos;                //ログデータポインタ

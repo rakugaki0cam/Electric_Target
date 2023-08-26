@@ -65,9 +65,9 @@ void log_data_make(uint16_t shot_count){
 
     //Œ‹‰Ê (•½‹Ï’l)
     log_result[ring_pos].shot_num = shot_count;
-    log_result[ring_pos].impact_pos_x = result.impact_pos_x_mm;
-    log_result[ring_pos].impact_pos_y = result.impact_pos_y_mm;
-    log_result[ring_pos].radius0 = result.radius0_mm;
+    log_result[ring_pos].impact_pos_x = result[NUM_PATTERN].impact_pos_x_mm;
+    log_result[ring_pos].impact_pos_y = result[NUM_PATTERN].impact_pos_y_mm;
+    log_result[ring_pos].radius0 = result[NUM_PATTERN].radius0_mm;
     log_result[ring_pos].temp = temp_ave_degree_c;
 
 }

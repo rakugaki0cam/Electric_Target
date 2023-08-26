@@ -7,17 +7,19 @@
  *  2022.03.24
  * V2_edition
  *  2022.05.11  1-3番目に入力したセンサから計算する
- *  
+ * 
+ * V4＿edition
+ *  2023.08.26  4通りの計算値からエラーを検出
+ *              1つのセンサー値が異常の場合、4つの座標がバラバラになる。
+ *              → 正しい座標は異常値を抜いた他の3つのセンサから求める1つだけの座標。どれが正しい座標なのかの判定が難しい。
  * 
  * 
- * File:   
- * Author: 
- * Comments:
- * Revision history: 
  */
 
 #include "calc_locate.h"
 
+
+#define     CALC_TEST_no   //計算テスト = ディレイを計算しない
 
 //GLOBAL
 //あとでmeasure_v3.cへ移動
@@ -29,14 +31,21 @@ sensor_data_t   sensor_4mic[NUM_SENSOR]= {
     {SENSOR4, 0xff,  SENSOR_HORIZONTAL_SPACING,  SENSOR_VERTICAL_SPACING, SENSOR_DEPTH_OFFSET, 0, 0, 0, 0, 0, 0, 0},    //センサー4 右上
 };
 
-impact_data_t   result;         //計算結果
+impact_data_t   result[NUM_PATTERN + 1];    //計算結果 最後のところに平均を収納するため+1
 
-const float   delay_a = (5.0 / 300);    //センサー遅れ時間の計算係数
+const float   delay_a = (5.0 / 300);        //センサー遅れ時間の計算係数
 const float   delay_b = 10;
 
 
 //LOCAL
 sensor_data_t   tmp_3[3];       //センサデータ受け渡し用
+
+uint8_t sensor_order[NUM_PATTERN][3] = {        //4センサから3ケを選択する4つのパターン
+    { SENSOR1, SENSOR2, SENSOR3},
+    { SENSOR1, SENSOR2, SENSOR4},
+    { SENSOR1, SENSOR3, SENSOR4},
+    { SENSOR2, SENSOR3, SENSOR4}
+};
 
 
 //
@@ -45,156 +54,257 @@ calc_status_source_t calc_locate_xy(void){
     //出力　result:計算結果座標x,y,r  グローバル
     //     stat:0-正常終了　1-エラー
     calc_status_source_t  calc_stat = CALC_STATUS_OK;
-    uint8_t     i;
+    uint8_t     i, pattern;
+    uint8_t     average_cnt = 0;        //平均値サンプル数のカウント
     
     //センサー遅れ時間の計算
-    for (i = 0; i < NUM_SENSOR; i++){
-        sensor_4mic[i].sensor_delay_usec = delay_sensor_usec(sensor_4mic[i].delay_time_usec);
+    for (pattern = 0; pattern < NUM_PATTERN; pattern++){
+        sensor_4mic[pattern].sensor_delay_usec = delay_sensor_usec(sensor_4mic[pattern].delay_time_usec);
     }   
     
     //計算結果クリア
-    result.pattern = 0;
-    result.impact_pos_x_mm = 0;
-    result.impact_pos_y_mm = 0;
-    result.radius0_mm = 0;
-    result.delay_time0_msec = 0;
-    result.status = 0;
-
-    calc_stat = calc_of_3sensor();   //座標を計算
-    if (CALC_STATUS_OK == calc_stat){
-        //計算OK
-        //着弾からセンサオンまでの遅れ時間(着弾時刻計算用)
-        result.delay_time0_msec = impact_time_msec(result.radius0_mm); 
-    }else {
-        //計算値が不可だった場合
-        result.radius0_mm = 999.99;
-        result.impact_pos_x_mm = 999.99;
-        result.impact_pos_y_mm = 999.99;
-        result.delay_time0_msec = 0;        //タマモニでのエラー判定に使用
-        //calc_stat = CALC_STATUS_CAL_ERROR;
+    for (i = 0; i < (NUM_PATTERN + 1); i++){
+        clear_result(i);
     }
-            
+    result[NUM_PATTERN].pattern = 0xffff;   //平均値識別マーク
+
+    //パターン回数分を計算
+    for (pattern = 0; pattern < NUM_PATTERN; pattern++){
+        calc_stat = calc_of_3sensor(pattern);   //座標を計算
+        if (CALC_STATUS_OK == calc_stat){
+            //計算OK
+            //平均のための積算-[NUM_PATTERN]に総和を入れる
+            result[NUM_PATTERN].impact_pos_x_mm += result[pattern].impact_pos_x_mm;
+            result[NUM_PATTERN].impact_pos_y_mm += result[pattern].impact_pos_y_mm; 
+            result[NUM_PATTERN].radius0_mm      += result[pattern].radius0_mm; 
+            average_cnt ++;
+        }else {
+            //計算値が不可だった場合
+            result[pattern].radius0_mm = 999.99;
+            result[pattern].impact_pos_x_mm = 999.99;
+            result[pattern].impact_pos_y_mm = 999.99;
+            result[pattern].delay_time0_msec = 0;        //タマモニでのエラー判定に使用
+            //calc_stat = CALC_STATUS_CAL_ERROR;
+            //平均計算に含めない
+        }
+    }
+    
+    //平均の計算 result配列の最後に平均値を代入
+    if (average_cnt == 0){
+        calc_stat = CALC_STATUS_AVERAGE_ERR;
+        result[NUM_PATTERN].status = calc_stat;
+        return calc_stat;
+    }
+    result[NUM_PATTERN].impact_pos_x_mm = result[NUM_PATTERN].impact_pos_x_mm / average_cnt;
+    result[NUM_PATTERN].impact_pos_y_mm = result[NUM_PATTERN].impact_pos_y_mm / average_cnt;
+    result[NUM_PATTERN].radius0_mm      = result[NUM_PATTERN].radius0_mm      / average_cnt;
+    
+    //偏差のチェック
+    calc_stat = check_deviation();
+    if ((calc_stat != CALC_STATUS_OK) && (calc_stat != CALC_STATUS_AVERAGE_FIX)){
+        return calc_stat;
+    }
+    
+    //着弾からセンサオンまでの遅れ時間 平均値(着弾時刻計算用)
+    result[NUM_PATTERN].delay_time0_msec = impact_time_msec(result[NUM_PATTERN].radius0_mm);      
+       
     return calc_stat;
 }
 
+void    clear_result(uint8_t n){
+    //計算結果をクリア
+    result[n].pattern = 0;
+    result[n].impact_pos_x_mm = 0;
+    result[n].impact_pos_y_mm = 0;
+    result[n].radius0_mm = 0;
+    result[n].delay_time0_msec = 0;
+    result[n].status = 0;
+}
 
 //
-calc_status_source_t calc_of_3sensor(void){
+calc_status_source_t calc_of_3sensor(uint8_t n){
     //tmp_3の3センサデータから座標値を計算
+    //Input  n:パターン番号    
     //Output result:計算値
     //       calc_stat:状態　0-OK,
     calc_status_source_t  calc_stat = CALC_STATUS_OK;
     
     //tmp_3に計算用データ代入
-    if (asign_3sensor() != 0){ 
+    if (asign_3sensor(n) != 0){ 
         //代入するデータがダメな時
         calc_stat = CALC_STATUS_NOT_ENOUGH;
-        result.radius0_mm = 999.99;
-        result.impact_pos_x_mm = 999.99;
-        result.impact_pos_y_mm = 999.99;
-        result.status = calc_stat;
+        result[n].radius0_mm = 999.99;
+        result[n].impact_pos_x_mm = 999.99;
+        result[n].impact_pos_y_mm = 999.99;
+        result[n].status = calc_stat;
         return calc_stat;
     }
 
     //使用センサーの番号を数字化
-    calc_sensor_pattern();
+    calc_sensor_pattern(n);
     
     //座標の計算
-    if (apollonius_3circle_xyr() != 0){
+    if (apollonius_3circle_xyr(n) != 0){
         //計算がダメなとき
         calc_stat = CALC_STATUS_CAL_ERROR;
-        result.radius0_mm = 999.99;
-        result.impact_pos_x_mm = 999.99;
-        result.impact_pos_y_mm = 999.99;
-        result.status = calc_stat;
+        result[n].radius0_mm = 999.99;
+        result[n].impact_pos_x_mm = 999.99;
+        result[n].impact_pos_y_mm = 999.99;
+        result[n].status = calc_stat;
         return calc_stat;
     }
     
     //計算結果の判定
-    if (result.radius0_mm > R_MAX){
+    if (result[n].radius0_mm > R_MAX){
         //rが大きすぎる
         calc_stat = CALC_STATUS_R0_ERR;
-        result.radius0_mm = 999.99;
-        result.impact_pos_x_mm = 999.99;
-        result.impact_pos_y_mm = 999.99;
-        result.status = calc_stat;
+        result[n].radius0_mm = 999.99;
+        result[n].impact_pos_x_mm = 999.99;
+        result[n].impact_pos_y_mm = 999.99;
+        result[n].status = calc_stat;
         return calc_stat;
     }
-    if ((result.impact_pos_x_mm < -TARGET_WIDTH_HALF) || (result.impact_pos_x_mm > TARGET_WIDTH_HALF)){
+    if ((result[n].impact_pos_x_mm < -TARGET_WIDTH_HALF) || (result[n].impact_pos_x_mm > TARGET_WIDTH_HALF)){
         //xが大きすぎる
         calc_stat = CALC_STATUS_X0_ERR;
-        result.radius0_mm = 999.99;
-        result.impact_pos_x_mm = 999.99;
-        result.impact_pos_y_mm = 999.99;
-        result.status = calc_stat;
+        result[n].radius0_mm = 999.99;
+        result[n].impact_pos_x_mm = 999.99;
+        result[n].impact_pos_y_mm = 999.99;
+        result[n].status = calc_stat;
         return calc_stat;
     }
-    if ((result.impact_pos_y_mm < -TARGET_HEIGHT_HALF) || (result.impact_pos_y_mm > TARGET_HEIGHT_HALF)){
+    if ((result[n].impact_pos_y_mm < -TARGET_HEIGHT_HALF) || (result[n].impact_pos_y_mm > TARGET_HEIGHT_HALF)){
         //yが大きすぎる
-        result.radius0_mm = 999.99;
-        result.impact_pos_x_mm = 999.99;
-        result.impact_pos_y_mm = 999.99;
+        result[n].radius0_mm = 999.99;
+        result[n].impact_pos_x_mm = 999.99;
+        result[n].impact_pos_y_mm = 999.99;
         calc_stat = CALC_STATUS_Y0_ERR;
-        result.status = calc_stat;
+        result[n].status = calc_stat;
         return calc_stat;
     }
     return calc_stat;
 }
 
 
-uint8_t asign_3sensor(void){
+uint8_t asign_3sensor(uint8_t n){
     //センサ3ケを選択してtmp_3へ代入
     //出力tmp_3-計算用の3組のデータ
     //stat 0:OK, 1:代入不可
     uint8_t i;
-    uint8_t n = 0;
     calc_status_source_t  calc_stat = CALC_STATUS_OK;
    
     //測定値代入
-    for (i = 0; i < NUM_SENSOR; i++){
-        if (sensor_4mic[i].status == SENSOR_STATUS_OK){
-            if (sensor_4mic[i].input_order < 3){
-                tmp_3[n] = sensor_4mic[i];
-                n++;
-                if (n > 3){
-                    calc_stat = CALC_STATUS_TOO_MANY;
-                    result.status = calc_stat;
-                    return calc_stat;
-                }
-            }
+    for (i = 0; i < 3; i++){
+        if (sensor_4mic[sensor_order[n][i]].status == SENSOR_STATUS_OK){
+            tmp_3[i] = sensor_4mic[sensor_order[n][i]];
         //一括代入 .sensor_x, .sensor_y, .sensor_z, .distance_mm
         } else{
             //データがダメ
             calc_stat = CALC_STATUS_NOT_ENOUGH;
-            result.status = calc_stat;
+            result[n].status = calc_stat;
             return calc_stat;
         }
     }
-    if (n != 3){
-        calc_stat = CALC_STATUS_NOT_ENOUGH;
-        result.status = calc_stat;
-    }
+    
     return calc_stat;
 }
 
 
-void    calc_sensor_pattern(void){
+void    calc_sensor_pattern(uint8_t n){
     //使用センサナンバーを3桁の数字にして記録
-    result.pattern = (tmp_3[0].sensor_num + 1) * 0x100
+    result[n].pattern = (tmp_3[0].sensor_num + 1) * 0x100
                    + (tmp_3[1].sensor_num + 1) * 0x10
                    + (tmp_3[2].sensor_num + 1);
+}
+
+uint8_t check_deviation(void){
+    //偏差のチェック 平均との差が大きいものを除く
+    //平均値を再計算
+    
+#define TARGET_SIZE_A4
+#ifdef  TARGET_SIZE_A4
+    #define     DEVIATION_XY    2.0                 //偏差 xy
+    #define     DEVIATION_R     3.0                 //偏差 r
+#else   //TARGET_SIZE_A3 
+    #define     DEVIATION_XY    100.0               ///////////////////////TEST
+    #define     DEVIATION_R     200.0
+#endif
+    
+    calc_status_source_t  calc_stat = CALC_STATUS_OK;
+    uint8_t     pattern;
+    uint8_t     average_cnt = 0;        //平均値サンプル数のカウント
+    float       dx, dy, dr;             //偏差
+    
+    for (pattern = 0; pattern < NUM_PATTERN; pattern++){
+        calc_stat = result[pattern].status;
+        if(calc_stat == CALC_STATUS_OK){
+            //偏差の計算
+            dx = result[pattern].impact_pos_x_mm - result[NUM_PATTERN].impact_pos_x_mm;
+            dy = result[pattern].impact_pos_y_mm - result[NUM_PATTERN].impact_pos_y_mm;
+            dr = result[pattern].radius0_mm      - result[NUM_PATTERN].radius0_mm;
+
+            if((dx < -DEVIATION_XY) || (dx > DEVIATION_XY)){
+                calc_stat = CALC_STATUS_X0_DEV_ERR;
+            }
+            if((dy < -DEVIATION_XY) || (dy > DEVIATION_XY)){
+                calc_stat = CALC_STATUS_Y0_DEV_ERR;
+            }
+            if((dr < -DEVIATION_R) || (dr > DEVIATION_R)){
+                calc_stat = CALC_STATUS_R0_DEV_ERR;
+            }
+            if (calc_stat != CALC_STATUS_OK){
+                //偏差エラーがある時
+                result[pattern].status = calc_stat;
+            }
+        }
+    }
+    
+    if (calc_stat != CALC_STATUS_OK){
+        //偏差エラーがある時は偏差データを除外して平均を取り直し
+        
+        //平均用メモリをクリア
+        clear_result(NUM_PATTERN);
+        result[NUM_PATTERN].pattern = 0xffff;       //平均値識別マーク
+        
+        
+        //平均のための積算やりなおし
+        for (pattern = 0; pattern < NUM_PATTERN; pattern++){
+            if (result[pattern].status == CALC_STATUS_OK){
+                result[NUM_PATTERN].impact_pos_x_mm += result[pattern].impact_pos_x_mm;
+                result[NUM_PATTERN].impact_pos_y_mm += result[pattern].impact_pos_y_mm; 
+                result[NUM_PATTERN].radius0_mm      += result[pattern].radius0_mm; 
+                average_cnt ++;
+            }
+        }
+        
+        //サンプル数チェック
+        if (average_cnt == 0){
+            calc_stat = CALC_STATUS_AVERAGE_ERR;
+            result[NUM_PATTERN].status = calc_stat;
+            return calc_stat;
+        }
+        
+        result[NUM_PATTERN].impact_pos_x_mm = result[NUM_PATTERN].impact_pos_x_mm / average_cnt;
+        result[NUM_PATTERN].impact_pos_y_mm = result[NUM_PATTERN].impact_pos_y_mm / average_cnt;
+        result[NUM_PATTERN].radius0_mm      = result[NUM_PATTERN].radius0_mm      / average_cnt;
+        
+        calc_stat = CALC_STATUS_AVERAGE_FIX;        //平均値の再計算が行われた
+        result[NUM_PATTERN].status = calc_stat;
+    }
+    return calc_stat;
 }
 
 
 //*** calculation sub *****************
 //locate
-uint8_t apollonius_3circle_xyr(void){
+uint8_t apollonius_3circle_xyr(uint8_t num_result){
     //座標の計算
     //リターン値　0:正常
     //          1:エラー
     //入力値 tmp_3[3]: センサーデータ x、y、z、遅れ距離
-    //出力値 result: 座標x、yと距離r0の計算値
-    
+    //出力値 result[]: 座標x、yと距離r0の計算値
+    //      num_result: 結果を代入する番号
+
     uint8_t i;
     calc_status_source_t  calc_stat = CALC_STATUS_OK;
     
@@ -230,7 +340,7 @@ uint8_t apollonius_3circle_xyr(void){
         //error分母がゼロ
         //e = 0.00001;
         calc_stat = CALC_STATUS_E_0_1;
-        result.status = calc_stat;
+        result[num_result].status = calc_stat;
         return calc_stat;
     }
     f[1] = (b[1] * c[2] - b[2] * c[1]) / e;
@@ -247,7 +357,7 @@ uint8_t apollonius_3circle_xyr(void){
     if (q < 0){
         //error　解の公式の条件
         calc_stat = CALC_STATUS_QUAD_F;
-        result.status = calc_stat;
+        result[num_result].status = calc_stat;
         return calc_stat;
     }
     
@@ -257,9 +367,9 @@ uint8_t apollonius_3circle_xyr(void){
         //半径が負の方は不採用
         r0 = (-bb + sqrt(q)) / (2 * aa);
     }
-    result.radius0_mm = r0;
-    result.impact_pos_x_mm = f[1] * r0 + g[1];
-    result.impact_pos_y_mm = f[2] * r0 + g[2];
+    result[num_result].radius0_mm = r0;
+    result[num_result].impact_pos_x_mm = f[1] * r0 + g[1];
+    result[num_result].impact_pos_y_mm = f[2] * r0 + g[2];
     
     return calc_stat;
 }
@@ -288,8 +398,12 @@ float   delay_sensor_usec(float delay_time){
     //センサーが音を拾ってからコンパレータがオンするまでの遅れ時間usec
     //delay_time:着弾～センサオンまでの時間で代用。簡略化
     float   correct_time;
-
+#ifndef CALC_TEST
     correct_time = delay_a * delay_time + delay_b;  //補正係数　dtは10～16くらいtimeは0～300usec
+#else
+    correct_time = 0;
+#endif    
+    
     return correct_time;
 }
 

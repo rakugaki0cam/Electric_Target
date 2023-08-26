@@ -52,10 +52,10 @@ uint8_t measure_main(void){
     if (measure_data_assign() < 3){
         //測定数が足りない時(計算には3個以上のデータが必要)
         meas_stat = MEASURE_STATUS_NOT_ENOUGH;
-        result.radius0_mm = 999.99;
-        result.impact_pos_x_mm = 999.99;
-        result.impact_pos_y_mm = 999.99;
-        result.delay_time0_msec = 0;        //タマモニでのエラー判定に使用
+        result[NUM_PATTERN].radius0_mm = 999.99;
+        result[NUM_PATTERN].impact_pos_x_mm = 999.99;
+        result[NUM_PATTERN].impact_pos_y_mm = 999.99;
+        result[NUM_PATTERN].delay_time0_msec = 0;        //タマモニでのエラー判定に使用
         return meas_stat;
     }
     //座標の計算
@@ -182,7 +182,7 @@ void result_disp(uint16_t shot_count, measure_status_source_t meas_stat, uint8_t
 //
 void tamamoni_data_send(void){
     //タマモニへ座標データ他を送信
-    printf("BINX0Y0dT %8.3f %8.3f %8.4f END ,", result.impact_pos_x_mm, result.impact_pos_y_mm, result.delay_time0_msec);
+    printf("BINX0Y0dT %8.3f %8.3f %8.4f END ,", result[NUM_PATTERN].impact_pos_x_mm, result[NUM_PATTERN].impact_pos_y_mm, result[NUM_PATTERN].delay_time0_msec);
 }
 
 
@@ -191,7 +191,7 @@ void esp32wifi_data_send(void){
     //WiFi & target LCD
     char    buf[255];
 
-    sprintf(buf, "BINX0Y0dT %8.3f %8.3f %8.4f END ,", result.impact_pos_x_mm, result.impact_pos_y_mm, result.delay_time0_msec);
+    sprintf(buf, "BINX0Y0dT %8.3f %8.3f %8.4f END ,", result[NUM_PATTERN].impact_pos_x_mm, result[NUM_PATTERN].impact_pos_y_mm, result[NUM_PATTERN].delay_time0_msec);
     while(!UART2_TransmitterIsReady());
     UART2_Write(buf, strlen(buf));
 }
@@ -205,7 +205,7 @@ void single_line(uint16_t shot_count, measure_status_source_t meas_stat){
         printf("%02d:measurement error\n", shot_count);
         return;
     }else {
-        printf("%02d:%6.1fx %6.1fy\n", shot_count, result.impact_pos_x_mm, result.impact_pos_y_mm);
+        printf("%02d:%6.1fx %6.1fy\n", shot_count, result[NUM_PATTERN].impact_pos_x_mm, result[NUM_PATTERN].impact_pos_y_mm);
     }
 }
 
@@ -251,26 +251,51 @@ void full_debug(uint16_t shot_count, measure_status_source_t meas_stat){
         return;
     }
     
-    //使用センサー番号
-    printf("selected sensor #%3x\n",result.pattern); 
-    //計算結果
+    //パターン毎の計算結果と平均
     printf("   x0     y0     r0 \n");
-    printf("%6.1f %6.1f %6.1f\n", result.impact_pos_x_mm, result.impact_pos_y_mm, result.radius0_mm);
-    //エラー
-    calc_stat = result.status;
-    switch(calc_stat){
-        case CALC_STATUS_X0_ERR:
-            printf(" x error\n");
-            break;
-        case CALC_STATUS_Y0_ERR:
-            printf(" y error\n");
-            break;
-        case CALC_STATUS_R0_ERR:
-            printf(" r error\n");
-            break;
-        default:
-            break;
+    for (i = 0; i < NUM_PATTERN; i++){
+        calc_stat = result[i].status;
+        switch(calc_stat){
+            case CALC_STATUS_OK:
+                printf("%6.1f %6.1f %6.1f\n", result[i].impact_pos_x_mm, result[i].impact_pos_y_mm, result[i].radius0_mm);
+                break;
+            case CALC_STATUS_NOT_ENOUGH :
+                printf(" P%1d error\n", i + 1);
+                break;
+            case CALC_STATUS_CAL_ERROR ... CALC_STATUS_QUAD_F:
+                printf(" P%1d calc error\n", i + 1);
+                break;
+            case CALC_STATUS_X0_ERR:
+                printf(" P%1d x error\n", i + 1);
+                break;
+            case CALC_STATUS_Y0_ERR:
+                printf(" P%1d y error\n", i + 1);
+                break;
+            case CALC_STATUS_R0_ERR:
+                printf(" P%1d r error\n", i + 1);
+                break;
+            case CALC_STATUS_X0_DEV_ERR:
+                printf(" P%1d dev x error\n", i + 1);
+                break;
+            case CALC_STATUS_Y0_DEV_ERR:
+                printf(" P%1d dev y error\n", i + 1);
+                break;
+            case CALC_STATUS_R0_DEV_ERR:
+                printf(" P%1d dev r error\n", i + 1);
+                break;
+            default:
+                break;
+        }
+
     }
+    calc_stat = result[NUM_PATTERN].status;     //平均値の状態
+    if (calc_stat != CALC_STATUS_AVERAGE_ERR){
+        printf("----- average ------\n");
+        printf("%6.1f %6.1f %6.1f\n", result[NUM_PATTERN].impact_pos_x_mm, result[NUM_PATTERN].impact_pos_y_mm, result[NUM_PATTERN].radius0_mm);
+    }else {
+        printf(">No average\n");
+    } 
+    
 }
 
 
@@ -303,16 +328,16 @@ void    csv_data(uint16_t shot_count){
     //番号
     printf("  %03d", shot_count);
     //結果x,y,r
-    printf(",%7.2f,%7.2f,%7.2f", result.impact_pos_x_mm, result.impact_pos_y_mm, result.radius0_mm);
+    printf(",%7.2f,%7.2f,%7.2f", result[NUM_PATTERN].impact_pos_x_mm, result[NUM_PATTERN].impact_pos_y_mm, result[NUM_PATTERN].radius0_mm);
     //ステータス
-    stat = result.status;
+    stat = result[NUM_PATTERN].status;
      if ((stat == CALC_STATUS_OK) || (stat == CALC_STATUS_AVERAGE_FIX)){
         printf(",OK    ");
     }else{
         printf(",error ");
     }
     //使用センサー番号
-    printf(", %3x",result.pattern);
+    printf(", %3x",result[NUM_PATTERN].pattern);
 
     //センサー順　t,dt,dr
     for (i = 0; i < NUM_SENSOR; i++){

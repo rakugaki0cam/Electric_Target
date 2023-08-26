@@ -47,7 +47,7 @@
         #define SENSOR_DEPTH_OFFSET         15.5        //塩ビ板t2　音の発生源は塩ビ板の裏面とする
     #endif
 #endif
-//target seat
+//target sheet
 #define     TARGET_WIDTH_HALF           105         //マト板横幅の1/2
 #define     TARGET_HEIGHT_HALF          120         //マト板縦高さの1/2
 #define     R_MAX                       340         //ほぼ対角長
@@ -62,7 +62,7 @@ typedef struct {
     float       sensor_z_mm;
     uint32_t    timer_cnt;          //タイマ測定値
     uint32_t    delay_cnt;          //タイマ差値
-    float      delay_time_usec;    //到達時間差測定値
+    float       delay_time_usec;    //到達時間差測定値
     float       sensor_delay_usec;  //センサ遅れ時間(推定)
     float       d_time_corr_usec;   //到達時間差補正後
     float       distance_mm;        //距離差
@@ -110,21 +110,23 @@ typedef enum {
 
 //GLOBAL
 extern sensor_data_t    sensor_4mic[];  //センサーデータ、測定値
-extern impact_data_t    result;         //計算結果
+extern impact_data_t    result[];       //計算結果
 extern const float      delay_a;        //センサー遅れ時間の計算係数
 extern const float      delay_b;
 
 
 //
-calc_status_source_t     calc_locate_xy(void);
+calc_status_source_t    calc_locate_xy(void);
 
 //
-calc_status_source_t     calc_of_3sensor(void);
-uint8_t     asign_3sensor(void);
-void        calc_sensor_pattern(void);
+calc_status_source_t    calc_of_3sensor(uint8_t);
+uint8_t                 asign_3sensor(uint8_t);
+void                    calc_sensor_pattern(uint8_t);
+void                    clear_result(uint8_t );
+uint8_t                 check_deviation(void);
 //calculation
 //locate
-uint8_t     apollonius_3circle_xyr(void);
+uint8_t     apollonius_3circle_xyr(uint8_t);
 float       dist_delay_mm(float);
 //time
 float       v_air_mps(void);
