@@ -9,7 +9,7 @@
  * 
  * 2023.12.17
  *  
- * 2023.12.20   v.0.01  USB充電時の長押しオフに見えるようにスリープモードを設定
+ * 2023.12.20   v.0.10  USB充電時の長押しオフに見えるようにスリープモードを設定
  * 
  * 
  * 
@@ -25,10 +25,10 @@
 // *****************************************************************************
 // *****************************************************************************
 
-#include <stddef.h>                     // Defines NULL
-#include <stdbool.h>                    // Defines true
-#include <stdlib.h>                     // Defines EXIT_FAILURE
-#include "definitions.h"                // SYS function prototypes
+//#include <stddef.h>                     // Defines NULL
+//#include <stdbool.h>                    // Defines true
+//#include <stdlib.h>                     // Defines EXIT_FAILURE
+//#include "definitions.h"                // SYS function prototypes
 #include "header.h"
 
 
@@ -39,7 +39,7 @@
 // *****************************************************************************
 
 //Global
-const float fw_version = 0.01;  //////////////////version
+const float fw_version = 0.11;  //////////////////version
 bool    i2c_flag = 0;
 bool    main_sw_flag = 0;
 bool    usb_in_flag = 0;
@@ -94,49 +94,46 @@ int main ( void )
     printf("********************\n");
     
     
-    //I2C iP5306 init
-#define SLAVE_ADDR  0x75    //iP5306 Li battery charger & booster
-    uint8_t myTxData [10];
-    uint8_t myRxData [3];
-
-    //register read
-    myTxData[0] = 0x00; //register address
-    i2c_flag = 0;
-    I2C1_Initialize();
-    I2C1_CallbackRegister(MyI2CCallback, NULL);
-    if(!I2C1_WriteRead(SLAVE_ADDR, &myTxData[0], 1, myRxData, 3)){
-        //error handling
-        printf("I2C error \n");
-        i2c_flag = 1;
-    }
-    while(i2c_flag == 0){
-        //wait
-        printf(".");
-    }
-    printf("\n");
-
-    printf("ID 0x%02X reg 0x%02X data %02X %02X %02X \n", SLAVE_ADDR, myTxData[0], myRxData[0], myRxData[1], myRxData[2]);
+    //I2C Init
+    I2C1_CallbackRegister(MyI2CCallback, 0);    //NULL);
     
-    //USBを抜くとブースト5Vが出るけれど、タイムラグがあって瞬停するためPICはリセットしてしまう。
-    //uint8_t myData [4] = {0x00, 0x31,0xDD, 0x74};   //iP5306 init
-    //USBを抜いたらオフ
-    //init
-    uint8_t myData[4] = {0x00, 0x31, 0xD9, 0x74};   //0x00 bit5:ブーストオン、bit4:充電オン、bit2:オートオンしない、bit1常時ブーストしない、bit0プッシュSWオフ可
-                                                    //0x01 bit7:ブーストオフ長押し、bit6:LEDライトダブル押し、bit5:短押しオフしない、bit2:USB抜いたらオフ、bit0:3V以下オフ
-                                                    //0x02 bit4:長押し3秒、bit3-2:オートオフ32秒
+    //I2C iP5306 init
+#define IP5306_SLAVE_ADDR  0x75    //iP5306 Li battery charger & booster
+    uint8_t i2cTxData [10];
+    uint8_t i2cRxData [3];
+
+    //デフォルト読み出し
+    i2c_flag = 0;
+    i2cTxData[0] = 0x00;    //register address
+    if(!I2C1_WriteRead(IP5306_SLAVE_ADDR, &i2cTxData[0], 1, i2cRxData, 3)){
+        i2c1_error();
+    }
+    while(i2c_flag == 0){
+        //wait　i2cは割込でステートマシンが処理を進める
+        printf(".");
+    }
+    printf("\n");
+    printf("ID 0x%02X reg 0x%02X data %02X %02X %02X \n", IP5306_SLAVE_ADDR, i2cTxData[0], i2cRxData[0], i2cRxData[1], i2cRxData[2]);
+
+    //
+    i2cTxData[0] = 0x00;    //先頭レジスタアドレス
+    i2cTxData[1] = 0x31;    //0x00 bit5:ブーストオン, bit4:充電オン, bit2:オートオンしない, bit1常時ブーストしない, bit0プッシュSWオフ可
+    i2cTxData[2] = 0xD9;    //0x01 bit7:ブーストオフ長押し, bit6:LEDライトダブル押し, bit5:短押しオフしない, bit2:USB抜いたらオフ, bit0:3V以下オフ
+                            //USBを抜くとブースト5Vが出るけれど、タイムラグがあって瞬停するためPICはリセットしてしまう。-> USB抜いたらオフにしておく
+    i2cTxData[3] = 0x74;    //0x02 bit4:長押し3秒, bit3-2:オートオフ32秒
+                                               
     i2c_flag = 0;   
-    I2C1_Initialize();
-    I2C1_CallbackRegister(MyI2CCallback, NULL);     //NULLでエラーになる時は0に変更する
-    if(!I2C1_Write(SLAVE_ADDR, &myData[0], 4)){
-        //error handling
-        printf("I2C error \n");
-        i2c_flag = 1;
+    //I2C1_Initialize();
+    //I2C1_CallbackRegister(MyI2CCallback, 0);    //NULL);     //NULLでコンパイルエラーになる時は0に変更する
+    if(!I2C1_Write(IP5306_SLAVE_ADDR, &i2cTxData[0], 4)){
+        i2c1_error();
     }
     while(i2c_flag == 0){
         //wait
         printf(".");
     }
     printf("\n");
+    
     
     //batV init
     battery_voltage_disp(1);    //initialize
@@ -381,6 +378,31 @@ void battery_voltage_disp(bool init) {
 
 
 }
+
+
+void i2c1_error(void){
+    //error handling
+    I2C_ERROR err;    
+
+    err = I2C1_ErrorGet();
+    printf("(%d) ", err);
+    switch (err){
+        case I2C_ERROR_NONE:
+            printf("I2C_ERROR_NONE\n");
+            break;
+        case I2C_ERROR_NACK:
+            printf("I2C_ERROR_NACK\n");
+            break;
+        case I2C_ERROR_BUS_COLLISION:
+            printf("I2C_ERROR_BUS_COLLISION\n");
+            break;
+    }
+    I2C1_TransferAbort();       //必要???
+    
+    i2c_flag = 1;
+}
+
+
 
 /*******************************************************************************
  End of File
