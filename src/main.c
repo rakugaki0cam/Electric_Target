@@ -10,6 +10,7 @@
  * 2023.12.17
  *  
  * 2023.12.20   v.0.10  USB充電時の長押しオフに見えるようにスリープモードを設定
+ * 2023.12.20   v.0.12  I2Cの修正
  * 
  * 
  * 
@@ -39,7 +40,7 @@
 // *****************************************************************************
 
 //Global
-const float fw_version = 0.11;  //////////////////version
+const float fw_version = 0.12;  //////////////////version
 bool    i2c_flag = 0;
 bool    main_sw_flag = 0;
 bool    usb_in_flag = 0;
@@ -60,7 +61,9 @@ void MyI2CCallback(uintptr_t context)
 
 void main_sw_on_callback(EXTERNAL_INT_PIN extIntPin, uintptr_t context)
 {
-    main_sw_flag = 1;
+    if (extIntPin == EXTERNAL_INT_4){
+        main_sw_flag = 1;
+    }
 }
 
 
@@ -75,7 +78,6 @@ int main ( void )
     ANALOG_POWER_Set();     //Analog 3.3V LDO
     
     //start up
-    
     CORETIMER_DelayMs(1000);
     LED_BLUE_Clear();
     CORETIMER_DelayMs(200);
@@ -96,51 +98,15 @@ int main ( void )
     
     //I2C Init
     I2C1_CallbackRegister(MyI2CCallback, 0);    //NULL);
-    
-    //I2C iP5306 init
-#define IP5306_SLAVE_ADDR  0x75    //iP5306 Li battery charger & booster
-    uint8_t i2cTxData [10];
-    uint8_t i2cRxData [3];
-
-    //デフォルト読み出し
-    i2c_flag = 0;
-    i2cTxData[0] = 0x00;    //register address
-    if(!I2C1_WriteRead(IP5306_SLAVE_ADDR, &i2cTxData[0], 1, i2cRxData, 3)){
-        i2c1_error();
-    }
-    while(i2c_flag == 0){
-        //wait　i2cは割込でステートマシンが処理を進める
-        printf(".");
-    }
-    printf("\n");
-    printf("ID 0x%02X reg 0x%02X data %02X %02X %02X \n", IP5306_SLAVE_ADDR, i2cTxData[0], i2cRxData[0], i2cRxData[1], i2cRxData[2]);
-
-    //
-    i2cTxData[0] = 0x00;    //先頭レジスタアドレス
-    i2cTxData[1] = 0x31;    //0x00 bit5:ブーストオン, bit4:充電オン, bit2:オートオンしない, bit1常時ブーストしない, bit0プッシュSWオフ可
-    i2cTxData[2] = 0xD9;    //0x01 bit7:ブーストオフ長押し, bit6:LEDライトダブル押し, bit5:短押しオフしない, bit2:USB抜いたらオフ, bit0:3V以下オフ
-                            //USBを抜くとブースト5Vが出るけれど、タイムラグがあって瞬停するためPICはリセットしてしまう。-> USB抜いたらオフにしておく
-    i2cTxData[3] = 0x74;    //0x02 bit4:長押し3秒, bit3-2:オートオフ32秒
-                                               
-    i2c_flag = 0;   
-    //I2C1_Initialize();
-    //I2C1_CallbackRegister(MyI2CCallback, 0);    //NULL);     //NULLでコンパイルエラーになる時は0に変更する
-    if(!I2C1_Write(IP5306_SLAVE_ADDR, &i2cTxData[0], 4)){
-        i2c1_error();
-    }
-    while(i2c_flag == 0){
-        //wait
-        printf(".");
-    }
-    printf("\n");
-    
+    ip5306_init();
     
     //batV init
     battery_voltage_disp(1);    //initialize
     
-    //INT4
+    //Main SW interrupt INT4
     EVIC_ExternalInterruptCallbackRegister(EXTERNAL_INT_4, main_sw_on_callback, 0);
     EVIC_ExternalInterruptEnable(EXTERNAL_INT_4);
+    
     
     while ( true )
     {
@@ -149,7 +115,7 @@ int main ( void )
         
         CORETIMER_DelayMs(100);
         disp_timer++;
-        if (disp_timer > 600){
+        if (disp_timer >= 200){
             disp_timer = 0;
         }
               
@@ -183,7 +149,7 @@ int main ( void )
                 printf(".");
                 if (sleep_sw_timer > 30){
                     sleep_sw_timer = 0;       
-                    ESP_POWER_Clear();          //ESP32 5V LoadSwitch----------------->I2Cプルアップがよろしくない***********
+                    ESP_POWER_Clear();          //ESP32 5V LoadSwitch
                     ANALOG_POWER_Clear();       //Analog 3.3V LDO
                     sleep_flag = 1;
                     printf(" SLEEP\n");
@@ -197,7 +163,7 @@ int main ( void )
             
         }
         
-        if ((disp_timer % 10) == 0){
+        if ((disp_timer % 20) == 0){///////////////////////20...2sec interval
             LED_BLUE_Toggle();
             battery_voltage_disp(0);
         }
@@ -211,6 +177,147 @@ int main ( void )
 
 
 // **** sub ********************************************************************
+
+#define IP5306_SLAVE_ADDR   0x75    //iP5306 Li battery charger & booster
+#define ESP_SLAVE_ADDR      0x25    //ESP32 LCD WiFi
+
+
+void ip5306_init(void){
+   //I2C iP5306 init
+    
+    uint8_t i2cTxData [1] = {0};
+    uint8_t i2cRxData [3] = {0,0,0};
+
+    //デフォルト読み出し
+    i2c_flag = 0;
+    i2cTxData[0] = 0x00;    //register address
+    i2c1_bus_check();
+    if(!I2C1_WriteRead(IP5306_SLAVE_ADDR, &i2cTxData[0], 1, i2cRxData, 3)){
+        printf("I2C bus busy!\n");
+        return;
+    }
+    if (!i2c1_wait()){
+        printf("iP5306 OK!\n");
+        printf("ID 0x%02X reg 0x%02X\n", IP5306_SLAVE_ADDR, i2cTxData[0]);
+        printf("data %02X %02X %02X\n", i2cRxData[0], i2cRxData[1], i2cRxData[2]);
+    }else{
+        printf("iP5306 Fault\n");
+        return;
+    }
+    
+    //iP5306 initialize
+    i2c_flag = 0;
+    i2cTxData[0] = 0x00;    //先頭レジスタアドレス
+    i2cTxData[1] = 0x31;    //0x00 bit5:ブーストオン, bit4:充電オン, bit2:オートオンしない, bit1常時ブーストしない, bit0プッシュSWオフ可
+    i2cTxData[2] = 0xD9;    //0x01 bit7:ブーストオフ長押し, bit6:LEDライトダブル押し, bit5:短押しオフしない, bit2:USB抜いたらオフ, bit0:3V以下オフ
+                            //USBを抜くとブースト5Vが出るけれど、タイムラグがあって瞬停するためPICはリセットしてしまう。-> USB抜いたらオフにしておく
+    i2cTxData[3] = 0x74;    //0x02 bit4:長押し3秒, bit3-2:オートオフ32秒
+                                               
+    i2c1_bus_check();
+    if(!I2C1_Write(IP5306_SLAVE_ADDR, &i2cTxData[0], 4)){
+        printf("I2C bus busy!\n");
+        return;
+    }
+    if (!i2c1_wait()){
+        printf("\n");
+    }else{
+        printf("iP5306 Fault\n");
+    }
+}
+
+
+bool ip5306_read_status(void){
+    //I2C read
+    uint8_t i2cTxData [11];
+    uint8_t i2cRxData [10];
+    uint8_t charge_enable;  //0x70
+    uint8_t charge_status;  //0x71
+    //uint8_t key_status;     //0x77
+    uint8_t bat_level;      //0x78
+    
+    i2c_flag = 0;
+    i2cTxData[0] = 0x70;    //register address
+    while(I2C1_IsBusy( ));  //wait for the current transfer to complete
+    if (i2c1_bus_check()){
+        return 1;
+    }
+    if(!I2C1_WriteRead(IP5306_SLAVE_ADDR, &i2cTxData[0], 1, i2cRxData, 9)){
+        printf("I2C bus busy!\n");
+        return 1;
+    }
+    if (i2c1_wait()){
+        printf("iP5306 Fault\n");
+        return 1;
+    }
+    
+    //
+    charge_enable = i2cRxData[0];
+    charge_status = i2cRxData[1];
+    //key_status = i2cRxData[7];
+    bat_level = i2cRxData[8];
+
+    //BAT level
+    uint8_t batZan = 100;
+    if (bat_level & 0b10000000){
+        batZan = 75;
+    }
+    if (bat_level & 0b01000000){
+        batZan = 50;
+    }
+    if (bat_level & 0b00100000){
+        batZan = 25;
+    }
+    printf("(%3d%%)\n", batZan);
+    
+#if DEBUG1
+    printf("cE %02X ", charge_enable);
+    printf("cS %02X ", charge_status);
+    printf("bV %02X ", bat_level);
+    printf("\n");
+#endif
+    
+    if (bat_level & 0b00010000){
+        //batV < 3.2V
+        printf("batV < 3.2V \n");
+    }
+    if (bat_level & 0b00000010){
+        //batV < 3.0V
+        printf("batV < 3.0V \n");
+    }
+
+    //Charge status change
+    if (charge_enable & 0b00001000){
+        if (usb_in_flag == 0){
+            printf("USB IN-");
+            usb_in_flag = 1;
+        }
+    }else{
+        CHARGE_LED_RED_Clear();
+        if (usb_in_flag == 1){
+            printf("USB Out\n");
+        }
+        usb_in_flag = 0;
+    }
+
+    if (usb_in_flag == 1){
+        if (charge_status & 0b00001000){
+            printf("Full\n");
+            CHARGE_LED_RED_Clear();
+            if (sleep_flag == 1){
+                LED_BLUE_Clear();
+                printf("PIC DEEP SLEEP\n");
+                CORETIMER_DelayMs(500);
+                deep_sleep();
+            }
+
+        }else{
+            printf("CHARGE\n");
+            CHARGE_LED_RED_Set();
+        }
+    }
+    return 0;
+}
+   
 
 void battery_voltage_disp(bool init) {
     //
@@ -256,150 +363,108 @@ void battery_voltage_disp(bool init) {
     }
     
     bat_v = (float)sum_batv / SAMPLES * VREFP / 4096 * (RA + RB) / RB;    //12bit
-    printf("BatV:%4.2fV ", bat_v);
-        
-    //I2C read
-#define SLAVE_ADDR  0x75    //iP5306 Li battery charger & booster
-#define ESP_ADDR    0x25    //ESP32 LCD WiFi
-    uint8_t myTxData [10];
-    uint8_t myRxData [9];
-    uint8_t charge_enable;  //0x70
-    uint8_t charge_status;  //0x71
-    //uint8_t key_status;     //0x77
-    uint8_t bat_level;      //0x78
-        
-    myTxData [0] = 0x70;    //register address
-    I2C1_Initialize();
-    I2C1_CallbackRegister(MyI2CCallback, 0); //NULL);
-    if(!I2C1_WriteRead(SLAVE_ADDR, &myTxData[0], 1, myRxData, 9))
-    {
-        //error handling
-        printf("I2C error \n");
-        return;
-    }
-    //i2c_flag = 0;
-    //while(i2c_flag == 0){
-        //printf(".");
-    //}
-    //printf("\n");
+    printf("BatV:%4.2fV", bat_v);
+     
     
+    ip5306_read_status();
     
+    /*
     //write to ESP32slave
-    myTxData [0] = 0x70;    //register address(=iP5306)
+    i2cTxData [0] = 0x70;    //register address(=iP5306)
     for (i = 1; i < 10; i++){
-        myTxData [i] = myRxData[i - 1];
+        i2cTxData [i] = i2cRxData[i - 1];
     }
-    
-    I2C1_Initialize();
-    I2C1_CallbackRegister(MyI2CCallback, 0); //NULL);
-    if(!I2C1_Write(ESP_ADDR, &myTxData[0], 10)){
-        //error handling
-        printf("I2C error \n");
-        return;
-    }
-    
-    
-    charge_enable = myRxData[0];
-    charge_status = myRxData[1];
-    //key_status = myRxData[7];
-    bat_level = myRxData[8];
 
-
-    //BAT level
-    uint8_t batZan = 100;
-    if (bat_level & 0b10000000){
-        batZan = 75;
+    if(!I2C1_Write(ESP_SLAVE_ADDR, &i2cTxData[0], 10)){
+        printf("I2C bus busy!\n");
     }
-    if (bat_level & 0b01000000){
-        batZan = 50;
-    }
-    if (bat_level & 0b00100000){
-        batZan = 25;
-    }
-    printf("(%3d%%)\n", batZan);
-    
-    printf("cE %02X ", charge_enable);
-    printf("cS %02X ", charge_status);
-    printf("bV %02X ", bat_level);
-    printf("\n");
-    
-    if (bat_level & 0b00010000){
-        //batV < 3.2V
-        printf("batV < 3.2V \n");
-    }
-    if (bat_level & 0b00000010){
-        //batV < 3.0V
-        printf("batV < 3.0V \n");
-    }
-    
-    //Charge status
-    if (charge_enable & 0b00001000){
-        if (usb_in_flag == 0){
-            printf("USB IN-");
-            usb_in_flag = 1;
-        }
+    if (!i2c1_wait()){
+        //printf("esp slave OK\n");/////////////////////////
     }else{
-        CHARGE_LED_RED_Clear();
-        if (usb_in_flag == 1){
-            printf("USB Out\n");
-        }
-        usb_in_flag = 0;
+        printf("ESP32 I2C Fault\n");
     }
-    
-    if (usb_in_flag == 1){
-        if (charge_status & 0b00001000){
-            printf("Full\n");
-            CHARGE_LED_RED_Clear();
-            if (sleep_flag == 1){
-                LED_BLUE_Clear();
-                printf("PIC DEEP SLEEP\n");
-                CORETIMER_DelayMs(500);
-                
-                //DEEP SLEEP
-                SYSKEY = 0x0;           // Write invalid key to force lock
-                SYSKEY = 0xAA996655;    // Write Key1 to SYSKEY
-                SYSKEY = 0x556699AA;    // Write Key2 to SYSKEY
-                OSCCONbits.SLPEN = 1;   // Set the power-saving mode to a sleep mode
-                SYSKEY = 0x0;           // Write invalid key to force lock
-                asm volatile ("wait");  // Put device in selected power-saving mode // Code execution will resume here after wake and
+    */
 
-                //////////// S L E E P //////////////////////////////////////////////////////////////////////////////////////////////
-                Nop();
-            }
-
-        }else{
-            printf("CHARGE\n");
-            CHARGE_LED_RED_Set();
-        }
-    }
-    printf("\n");
-
-
-
+    printf("\n");  
 
 }
 
 
-void i2c1_error(void){
-    //error handling
-    I2C_ERROR err;    
+bool i2c1_bus_check(void){
+    //bus idle
+#define COUNT2   100
+    uint16_t i = 0;
+    
+    while(I2C1_IsBusy( )){
+        //wait for the current transfer to complete
+        i++;
+        if (i > COUNT2){
+            //bus error
+            printf("bus error\n");
+            I2C1_TransferAbort();       //必要???
+            return 1;
+        }
+    }
+    return 0;
+}
 
-    err = I2C1_ErrorGet();
-    printf("(%d) ", err);
-    switch (err){
+
+bool i2c1_error(void){
+    //error handling
+    static uint16_t cnt1 = 0;
+    static uint16_t cnt2 = 0;
+    static uint32_t a = 0;
+    
+    a++;
+    while(I2C1_IsBusy());  //wait for the current transfer to complete
+    switch(I2C1_ErrorGet()){
         case I2C_ERROR_NONE:
-            printf("I2C_ERROR_NONE\n");
+            return 0;
             break;
         case I2C_ERROR_NACK:
+            cnt1++;
             printf("I2C_ERROR_NACK\n");
             break;
         case I2C_ERROR_BUS_COLLISION:
+            cnt2++;
             printf("I2C_ERROR_BUS_COLLISION\n");
             break;
     }
-    I2C1_TransferAbort();       //必要???
+    I2C1_TransferAbort();       //必要みたい
+    return 1;
+}
+
+
+bool i2c1_wait(void){
+    //i2c1 処理終了待ち
+    //返り値 0:OK, 1:error or time over
     
-    i2c_flag = 1;
+#define COUNT   20
+    uint16_t    i = 0;
+    
+    while(!i2c_flag){
+        i++;
+        if (i > COUNT){
+            printf("I2C timeout!\n");
+            return 1;
+        }
+        printf(".");
+    }
+    return i2c1_error();
+}
+
+
+void deep_sleep(void){
+    //DEEP SLEEP
+    SYSKEY = 0x0;           // Write invalid key to force lock
+    SYSKEY = 0xAA996655;    // Write Key1 to SYSKEY
+    SYSKEY = 0x556699AA;    // Write Key2 to SYSKEY
+    OSCCONbits.SLPEN = 1;   // Set the power-saving mode to a sleep mode
+    SYSKEY = 0x0;           // Write invalid key to force lock
+    asm volatile ("wait");  // Put device in selected power-saving mode // Code execution will resume here after wake and
+
+    //////////// S L E E P //////////////////////////////////////////////////////////////////////////////////////////////
+    Nop();
 }
 
 
