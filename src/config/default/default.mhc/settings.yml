@@ -1,0 +1,14 @@
+configName: default
+folderName: ElectricTARGET#_V5_32MK
+format_version: v1.0
+frameworkPath: ../../Harmony3_iMac
+processor: PIC32MK0512MCJ064
+projectName: ElectricTARGET#_V5_32MK
+settings:
+  PackageFilter: motor_control;gfx_apps_pic32mz_ef;dev_packs;mc_apps_pic32cm_mc;core;mc_apps_pic32mk;touch;x2c;csp_apps_pic32mz_ef;core_apps_pic32mz_ef;mc_apps_sam_c2x;bsp;quick_docs;usb;csp;harmony-services;csp_apps_pic32mk;gfx;core_apps_pic32mk;Devices
+  FORCE_OPTIMIZATION: 'false'
+  GENERATE_BACKUP: 'true'
+  TRUSTZONE: 'false'
+  CMSISPath: ./dev_packs/arm/CMSIS/5.8.0
+  MERGE_STRATEGY: USER_ALL
+  DFPPath: ./dev_packs/Microchip/PIC32MK-MC_DFP/1.10.146/atdf/PIC32MK0512MCJ064.atdf

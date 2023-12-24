@@ -12,13 +12,12 @@
 #include <stdbool.h>                    // Defines true
 #include <stdlib.h>                     // Defines EXIT_FAILURE
 #include "definitions.h"                // SYS function prototypes
-//#include "ip5306_i2c.h"
 
 
 void ip5306_init(void);
-bool ip5306_read_status(void);
+bool ip5306_read_status(uint8_t*);
 
-void battery_voltage_disp(bool);
+bool battery_voltage_disp(bool);
 bool i2c1_bus_check(void);
 bool i2c1_error(void);
 bool i2c1_wait(void);
