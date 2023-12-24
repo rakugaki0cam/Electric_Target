@@ -10,7 +10,7 @@
  * 2023.12.17
  *  
  * 2023.12.20   v.0.10  USB充電時の長押しオフに見えるようにスリープモードを設定
- * 2023.12.20   v.0.12  I2Cの修正
+ * 2023.12.24   v.0.12  I2Cの修正、バッテリーと充電時スリープ機能の整理
  * 
  * 
  * 
@@ -20,33 +20,28 @@
  * 
  *******************************************************************************/
 
-// *****************************************************************************
-// *****************************************************************************
-// Section: Included Files
-// *****************************************************************************
-// *****************************************************************************
 
-//#include <stddef.h>                     // Defines NULL
-//#include <stdbool.h>                    // Defines true
-//#include <stdlib.h>                     // Defines EXIT_FAILURE
-//#include "definitions.h"                // SYS function prototypes
+
 #include "header.h"
 
-
-// *****************************************************************************
-// *****************************************************************************
-// Section: Main Entry Point
-// *****************************************************************************
-// *****************************************************************************
 
 //Global
 const float fw_version = 0.12;  //////////////////version
 bool    i2c_flag = 0;
 bool    main_sw_flag = 0;
+bool    timer_1sec_flag = 0;
 bool    usb_in_flag = 0;
-bool    sleep_flag = 0;
 uint8_t sleep_sw_timer = 0;
 uint8_t disp_timer = 0;
+
+typedef enum
+{
+    POWERSAVING_NORMAL = 0,
+    POWERSAVING_SLEEP  = 1,
+    POWERSAVING_DEEPSLEEP = 2,
+} POWERSAVING_MASK;
+POWERSAVING_MASK sleep_flag = POWERSAVING_NORMAL;
+
 
 
 //callback
@@ -66,6 +61,9 @@ void main_sw_on_callback(EXTERNAL_INT_PIN extIntPin, uintptr_t context)
     }
 }
 
+void timer_1sec(uintptr_t context){
+    timer_1sec_flag = 1;
+}
 
 
 int main ( void )
@@ -89,23 +87,37 @@ int main ( void )
     CORETIMER_DelayMs(100);
     LED_BLUE_Clear();
     
+    printf("\n");
     printf("********************\n");
     printf("* electric TARGET  *\n");
     printf("*  #2    ver.%5.2f *\n", fw_version);
-    printf("*                  *\n");
     printf("********************\n");
-    
+    printf("--- INIT -----------\n");
+
     
     //I2C Init
     I2C1_CallbackRegister(MyI2CCallback, 0);    //NULL);
     ip5306_init();
     
-    //batV init
-    battery_voltage_disp(1);    //initialize
+    //comparator
+    float       v_th = 0.200; //V CDAconverter
+    uint16_t    val_12bit;
+    val_12bit = (float)4096 / 3.3 * v_th;
+    printf("Vth=%4.2fV:%d(12bit)\n", v_th, val_12bit);
+    CDAC2_DataWrite(val_12bit);
     
     //Main SW interrupt INT4
     EVIC_ExternalInterruptCallbackRegister(EXTERNAL_INT_4, main_sw_on_callback, 0);
     EVIC_ExternalInterruptEnable(EXTERNAL_INT_4);
+    
+    //RTCC
+    RTCC_CallbackRegister(timer_1sec, 0);
+    
+    printf("--------------------\n");
+    printf("\n");
+    
+    //batV init
+    battery_voltage_disp(1);    //initialize
     
     
     while ( true )
@@ -113,61 +125,61 @@ int main ( void )
         //Maintain state machines of all polled MPLAB Harmony modules.
         SYS_Tasks ( );
         
-        CORETIMER_DelayMs(100);
-        disp_timer++;
-        if (disp_timer >= 200){
-            disp_timer = 0;
+        if (timer_1sec_flag == 1){
+            timer_1sec_flag = 0;
+            disp_timer++;
+            
+            
+            if ((disp_timer % 8) == 0){/////////////////////// interval
+                LED_BLUE_Toggle();
+                battery_voltage_disp(0);
+            }
         }
-              
+        
         if (main_sw_flag == 1){
             //INT4
             CORETIMER_DelayMs(50);
             if(MAIN_SW_Get() == 0){
                 //スイッチ押されている
                 printf("mainSW ON\n");
-                if (sleep_flag == 1){
-                    //スリープ中ならリスタート
+                if (sleep_flag != POWERSAVING_NORMAL){
+                    //スリープ、ディープスリープ中ならリスタート
                     main_sw_flag = 0;                
                     if(MAIN_SW_Get() == 0){
-                        printf("ReSTART!\n");
+                        printf("\n");
+                        printf("***** ReSTART! *****\n");
+                        CORETIMER_DelayMs(500);
                         RCON_SoftwareReset();       //リセット
                     }
                 }else{
-                    //スリープ中でない時は長押しカウントスタート
+                    //スリープ中でない時は長押しスタート
+                    sleep_sw_timer = 0;
+                    while(!MAIN_SW_Get()){
+                        //ボタンが押されている
+                        CORETIMER_DelayMs(100);
+                        printf(".");
+                        sleep_sw_timer++;
+                        if (sleep_sw_timer > 30){
+                            //スリープへ
+                            sleep_flag = POWERSAVING_SLEEP;
+                            ESP_POWER_Clear();          //ESP32 5V LoadSwitch
+                            ANALOG_POWER_Clear();       //Analog 3.3V LDO
+                            printf("SLEEP\n");
+                            printf("\n");
+                            CORETIMER_DelayMs(1000);
+                            deep_sleep();      //RTCC割り込みで周期的に起きる     
+                            //---------------------- SLEEP ---------------------
+                            //充電完了待ち
+                            
+                        }
+                    }
                     main_sw_flag = 0;
-                    sleep_sw_timer = 1;
+                    printf("\n");
+                    CORETIMER_DelayMs(100);
                 }
             }
         }
-        
-        if (sleep_sw_timer > 0){
-            //USB接続中のときはスリープモードへ入る
-            //USB接続していない時はiP5306がオフする
-            if (MAIN_SW_Get() == 0){
-                //長押しのチェック
-                sleep_sw_timer++;
-                printf(".");
-                if (sleep_sw_timer > 30){
-                    sleep_sw_timer = 0;       
-                    ESP_POWER_Clear();          //ESP32 5V LoadSwitch
-                    ANALOG_POWER_Clear();       //Analog 3.3V LDO
-                    sleep_flag = 1;
-                    printf(" SLEEP\n");
-                    CORETIMER_DelayMs(3000);
-                }
-            }else{
-                //途中でボタンを話した時
-                sleep_sw_timer = 0;
-                CORETIMER_DelayMs(100);
-            }
-            
-        }
-        
-        if ((disp_timer % 20) == 0){///////////////////////20...2sec interval
-            LED_BLUE_Toggle();
-            battery_voltage_disp(0);
-        }
-        
+  
     }
 
     /* Execution should not come here during normal operation */
@@ -197,9 +209,9 @@ void ip5306_init(void){
         return;
     }
     if (!i2c1_wait()){
+        printf("I2C 0x%02X reg 0x%02X\n", IP5306_SLAVE_ADDR, i2cTxData[0]);
+        printf("read %02X %02X %02X\n", i2cRxData[0], i2cRxData[1], i2cRxData[2]);
         printf("iP5306 OK!\n");
-        printf("ID 0x%02X reg 0x%02X\n", IP5306_SLAVE_ADDR, i2cTxData[0]);
-        printf("data %02X %02X %02X\n", i2cRxData[0], i2cRxData[1], i2cRxData[2]);
     }else{
         printf("iP5306 Fault\n");
         return;
@@ -226,18 +238,17 @@ void ip5306_init(void){
 }
 
 
-bool ip5306_read_status(void){
+bool ip5306_read_status(uint8_t* data0x70){
     //I2C read
-    uint8_t i2cTxData [11];
-    uint8_t i2cRxData [10];
+    uint8_t i2cTxData [1];
+    uint8_t i2cRxData [9];
     uint8_t charge_enable;  //0x70
     uint8_t charge_status;  //0x71
-    //uint8_t key_status;     //0x77
     uint8_t bat_level;      //0x78
+    uint8_t batZan = 100;   //%
     
     i2c_flag = 0;
     i2cTxData[0] = 0x70;    //register address
-    while(I2C1_IsBusy( ));  //wait for the current transfer to complete
     if (i2c1_bus_check()){
         return 1;
     }
@@ -257,7 +268,6 @@ bool ip5306_read_status(void){
     bat_level = i2cRxData[8];
 
     //BAT level
-    uint8_t batZan = 100;
     if (bat_level & 0b10000000){
         batZan = 75;
     }
@@ -268,6 +278,7 @@ bool ip5306_read_status(void){
         batZan = 25;
     }
     printf("(%3d%%)\n", batZan);
+    data0x70[0] = (batZan / 25);        //[bit2:0]
     
 #if DEBUG1
     printf("cE %02X ", charge_enable);
@@ -277,16 +288,18 @@ bool ip5306_read_status(void){
 #endif
     
     if (bat_level & 0b00010000){
-        //batV < 3.2V
         printf("batV < 3.2V \n");
+        data0x70[0] |= 0b00001000;      //[bit3]
     }
     if (bat_level & 0b00000010){
-        //batV < 3.0V
         printf("batV < 3.0V \n");
+        data0x70[0] |= 0b00010000;      //[bit4] 
     }
 
     //Charge status change
     if (charge_enable & 0b00001000){
+        //USB IN
+        data0x70[0] |= 0b00100000;  //[bit5] 
         if (usb_in_flag == 0){
             printf("USB IN-");
             usb_in_flag = 1;
@@ -302,14 +315,18 @@ bool ip5306_read_status(void){
     if (usb_in_flag == 1){
         if (charge_status & 0b00001000){
             printf("Full\n");
+            data0x70[0] |= 0b01000000;  //[bit6] 
             CHARGE_LED_RED_Clear();
-            if (sleep_flag == 1){
+            if (sleep_flag == POWERSAVING_SLEEP){
+                sleep_flag = POWERSAVING_DEEPSLEEP;
                 LED_BLUE_Clear();
-                printf("PIC DEEP SLEEP\n");
+                RTCC_InterruptDisable(RTCC_INT_ALARM);//RTCC 割り込み停止
+                printf("RTCC Int off\n");
+                printf("-- PIC DEEP SLEEP --\n");
                 CORETIMER_DelayMs(500);
                 deep_sleep();
+                ///////////////////////// DEEP SLEEP ////////////////////////////////
             }
-
         }else{
             printf("CHARGE\n");
             CHARGE_LED_RED_Set();
@@ -319,9 +336,9 @@ bool ip5306_read_status(void){
 }
    
 
-void battery_voltage_disp(bool init) {
+bool battery_voltage_disp(bool init) {
     //
-    //init=1:initialize  data read -> array
+    //init=1:初回
     
 //#define     ADCH_VBAT   ADCHS_CH1
 #define     ADCH_VBAT   ADCHS_CH19
@@ -334,16 +351,18 @@ void battery_voltage_disp(bool init) {
     static uint16_t     batv[SAMPLES];      //data arry
     static uint8_t      ring_cnt = 0;       
     uint16_t            sum_batv;
+    uint8_t             dataToEsp[4];
+    uint16_t            batToEsp;           //batV*1000[V]
     uint8_t             i;
         
-    //initialize
+    //平均用データ配列を埋める
     if (init == 1){
         for(i = 0; i < SAMPLES; i++){
             ADCHS_ChannelConversionStart(ADCH_VBAT);
             while(!ADCHS_ChannelResultIsReady(ADCH_VBAT));
             batv[i] = ADCHS_ChannelResultGet(ADCH_VBAT);  
         }
-        return;
+        //return;
     }
     
     //normal
@@ -366,27 +385,40 @@ void battery_voltage_disp(bool init) {
     printf("BatV:%4.2fV", bat_v);
      
     
-    ip5306_read_status();
-    
-    /*
-    //write to ESP32slave
-    i2cTxData [0] = 0x70;    //register address(=iP5306)
-    for (i = 1; i < 10; i++){
-        i2cTxData [i] = i2cRxData[i - 1];
+    ip5306_read_status(dataToEsp);
+    if (sleep_flag != POWERSAVING_NORMAL ){
+        return 0;
     }
+    
+    batToEsp = bat_v * 1000;
+    dataToEsp[1] = dataToEsp[0];
+    dataToEsp[0] = 0x70;    //register address
+    dataToEsp[2] = batToEsp >> 8;
+    dataToEsp[3] = batToEsp & 0xff;
 
-    if(!I2C1_Write(ESP_SLAVE_ADDR, &i2cTxData[0], 10)){
+    printf("to ESP %02X %02X %02X %02X\n", dataToEsp[0], dataToEsp[1], dataToEsp[2], dataToEsp[3]);
+
+    
+    //write to ESP32slave
+    i2c_flag = 0;
+    if (i2c1_bus_check()){
+        return 1;
+    }
+    if(!I2C1_Write(ESP_SLAVE_ADDR, &dataToEsp[0], 4)){
         printf("I2C bus busy!\n");
+        printf("\n");  
+        return 1;
     }
     if (!i2c1_wait()){
-        //printf("esp slave OK\n");/////////////////////////
+        //printf("ESP slave OK\n");
     }else{
-        printf("ESP32 I2C Fault\n");
+        printf("ESP slave Fault\n");
+        printf("\n");  
+        return 1;
     }
-    */
 
     printf("\n");  
-
+    return 0;
 }
 
 
@@ -464,6 +496,7 @@ void deep_sleep(void){
     asm volatile ("wait");  // Put device in selected power-saving mode // Code execution will resume here after wake and
 
     //////////// S L E E P //////////////////////////////////////////////////////////////////////////////////////////////
+    Nop();
     Nop();
 }
 
