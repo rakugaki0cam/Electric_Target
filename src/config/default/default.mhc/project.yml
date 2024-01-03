@@ -76,13 +76,13 @@ files:
   security: NON_SECURE
   type: SOURCE
   userChecksum: 58FF7D5575083A5831423D302BF14425
-- generatedChecksum: DCD0064864EA6DF18224A57C7A3F56E9
+- generatedChecksum: EAF39DF2B693C6A67493E5C64061766F
   logicalPath: config/default/peripheral/gpio
   name: plib_gpio.c
   physicalPath: peripheral/gpio
   security: NON_SECURE
   type: SOURCE
-  userChecksum: DCD0064864EA6DF18224A57C7A3F56E9
+  userChecksum: EAF39DF2B693C6A67493E5C64061766F
 - generatedChecksum: 546974F8A95A053C45F9A532F10C641D
   logicalPath: config/default/peripheral/i2c/master
   name: plib_i2c1_master.c

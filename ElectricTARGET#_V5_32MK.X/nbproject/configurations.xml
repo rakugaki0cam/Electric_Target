@@ -74,6 +74,10 @@
         </logicalFolder>
       </logicalFolder>
       <itemPath>/Users/isober/HarmonyProjects/ElectricTARGET_2/firmware/src/header.h</itemPath>
+      <itemPath>/Users/isober/HarmonyProjects/ElectricTARGET_2/firmware/src/BME280_v3.h</itemPath>
+      <itemPath>/Users/isober/HarmonyProjects/ElectricTARGET_2/firmware/src/MyI2C1.h</itemPath>
+      <itemPath>/Users/isober/HarmonyProjects/ElectricTARGET_2/firmware/src/iP5306.h</itemPath>
+      <itemPath>/Users/isober/HarmonyProjects/ElectricTARGET_2/firmware/src/ESP32slave.h</itemPath>
     </logicalFolder>
     <logicalFolder name="LinkerScript"
                    displayName="Linker Files"
@@ -152,6 +156,10 @@
         </logicalFolder>
       </logicalFolder>
       <itemPath>../src/main.c</itemPath>
+      <itemPath>/Users/isober/HarmonyProjects/ElectricTARGET_2/firmware/src/BME280_v3.c</itemPath>
+      <itemPath>/Users/isober/HarmonyProjects/ElectricTARGET_2/firmware/src/MyI2C1.c</itemPath>
+      <itemPath>/Users/isober/HarmonyProjects/ElectricTARGET_2/firmware/src/iP5306.c</itemPath>
+      <itemPath>/Users/isober/HarmonyProjects/ElectricTARGET_2/firmware/src/ESP32slave.c</itemPath>
     </logicalFolder>
     <logicalFolder name="ExternalFiles"
                    displayName="Important Files"
@@ -695,8 +703,6 @@
         <property key="memories.programmemory" value="true"/>
         <property key="memories.programmemory.ranges" value="1d000000-1d07ffff"/>
         <property key="poweroptions.powerenable" value="true"/>
-        <property key="programmerToGoFilePath"
-                  value="/Users/isober/HarmonyProjects/ElectricTARGET#2/firmware/ElectricTARGET#_V5_32MK.X/debug/default/ElectricTARGET#_V5_32MK_ptg"/>
         <property key="programmerToGoImageName" value="ElectricTARGET#_V5_32MK_ptg"/>
         <property key="programoptions.donoteraseauxmem" value="false"/>
         <property key="programoptions.eraseb4program" value="true"/>

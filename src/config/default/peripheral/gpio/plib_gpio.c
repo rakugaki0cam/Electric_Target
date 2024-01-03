@@ -75,6 +75,7 @@ void GPIO_Initialize ( void )
     /* PORTE Initialization */
     ANSELECLR = 0x2U; /* Digital Mode Enable */
     /* PORTF Initialization */
+    CNPUFSET = 0x3U; /* Pull-Up Enable */
     /* PORTG Initialization */
 
     /* Unlock system for PPS configuration */
