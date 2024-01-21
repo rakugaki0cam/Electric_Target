@@ -85,8 +85,17 @@
 #define MAIN_SW_PIN                  GPIO_PIN_RB15
 
 /*** Macros for BATV pin ***/
-#define BATV_Get()               ((PORTA >> 1) & 0x1U)
-#define BATV_PIN                  GPIO_PIN_RA1
+#define BATV_Get()               ((PORTG >> 6) & 0x1U)
+#define BATV_PIN                  GPIO_PIN_RG6
+
+/*** Macros for PT1 pin ***/
+#define PT1_Set()               (LATGSET = (1U<<7))
+#define PT1_Clear()             (LATGCLR = (1U<<7))
+#define PT1_Toggle()            (LATGINV= (1U<<7))
+#define PT1_OutputEnable()      (TRISGCLR = (1U<<7))
+#define PT1_InputEnable()       (TRISGSET = (1U<<7))
+#define PT1_Get()               ((PORTG >> 7) & 0x1U)
+#define PT1_PIN                  GPIO_PIN_RG7
 
 /*** Macros for U1TXDE pin ***/
 #define U1TXDE_Get()               ((PORTE >> 1) & 0x1U)

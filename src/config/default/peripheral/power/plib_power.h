@@ -1,19 +1,21 @@
 /*******************************************************************************
-  TMR Peripheral Library Interface Header File
+  Power PLIB
 
   Company
     Microchip Technology Inc.
 
   File Name
-    plib_tmr_common.h
+    plib_power.h
 
   Summary
-    TMR peripheral library interface.
+    Power PLIB Header File.
 
   Description
-    This file defines the interface to the TC peripheral library.  This
-    library provides access to and control of the associated peripheral
-    instance.
+    This file defines the interface to the DSCTRL peripheral library.
+    This library provides access to and control of the associated Resets.
+
+  Remarks:
+    None.
 
 *******************************************************************************/
 
@@ -42,9 +44,8 @@
 *******************************************************************************/
 // DOM-IGNORE-END
 
-#ifndef PLIB_TMR_COMMON_H    // Guards against multiple inclusion
-#define PLIB_TMR_COMMON_H
-
+#ifndef PLIB_POWER_H      // Guards against multiple inclusion
+#define PLIB_POWER_H
 
 // *****************************************************************************
 // *****************************************************************************
@@ -52,17 +53,16 @@
 // *****************************************************************************
 // *****************************************************************************
 
-/*  This section lists the other files that are included in this file.
-*/
+#include <stdbool.h>
 #include <stddef.h>
+#include "device.h"
 
 // DOM-IGNORE-BEGIN
-#ifdef __cplusplus  // Provide C++ Compatibility
+#ifdef __cplusplus // Provide C++ Compatibility
 
-extern "C" {
+    extern "C" {
 
 #endif
-
 // DOM-IGNORE-END
 
 // *****************************************************************************
@@ -70,51 +70,28 @@ extern "C" {
 // Section: Data Types
 // *****************************************************************************
 // *****************************************************************************
-/*  The following data type definitions are used by the functions in this
-    interface and should be considered part of it.
-*/
 
+typedef enum {
 
-// *****************************************************************************
-/* TMR_CALLBACK
-
-  Summary:
-    Use to register a callback with the TMR.
-
-  Description:
-    When a match is asserted, a callback can be activated.
-    Use TMR_CALLBACK as the function pointer to register the callback
-    with the match.
-
-  Remarks:
-    The callback should look like:
-      void callback(handle, context);
-	Make sure the return value and parameters of the callback are correct.
-*/
-
-typedef void (*TMR_CALLBACK)(uint32_t status, uintptr_t context);
+    LOW_POWER_IDLE_MODE,
+    LOW_POWER_SLEEP_MODE,
+    LOW_POWER_DREAM_MODE,
+} POWER_LOW_POWER_MODE;
 
 // *****************************************************************************
+// *****************************************************************************
+// Section: Interface
+// *****************************************************************************
+// *****************************************************************************
 
-typedef struct
-{
-    /*TMR callback function happens on Period match*/
-    TMR_CALLBACK callback_fn;
-    /* - Client data (Event Context) that will be passed to callback */
-    uintptr_t context;
-
-}TMR_TIMER_OBJECT;
+void POWER_LowPowerModeEnter( POWER_LOW_POWER_MODE mode );
 
 // DOM-IGNORE-BEGIN
 #ifdef __cplusplus  // Provide C++ Compatibility
 
-}
+    }
 
 #endif
 // DOM-IGNORE-END
 
-#endif //_PLIB_TMR_COMMON_H
-
-/**
- End of File
-*/
+#endif /* PLIB_POWER_H */

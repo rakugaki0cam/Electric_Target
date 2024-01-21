@@ -119,7 +119,7 @@ void RTCC_Initialize( void )
     }
 
     RTCTIME = 0x18000000;   /* Set RTCC time */
-    RTCDATE = 0x23122306;  /* Set RTCC date */
+    RTCDATE = 0x24010706;  /* Set RTCC date */
 
     RTCALRMSET = _RTCALRM_CHIME_MASK;  /* Set alarm to repeat forever */
 
@@ -129,7 +129,7 @@ void RTCC_Initialize( void )
         /* Wait for disable */
     }
 
-    ALRMTIME = 0x23595500;   /* Set alarm time */
+    ALRMTIME = 0x20000000;   /* Set alarm time */
     ALRMDATE = 0x00123100;   /* Set alarm date */
     RTCALRMbits.AMASK = 1; /* Set alarm frequency */
 

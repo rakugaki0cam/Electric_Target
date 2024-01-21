@@ -1,19 +1,21 @@
 /*******************************************************************************
-  TMR Peripheral Library Interface Header File
+  Resets (Power) PLIB
 
   Company
     Microchip Technology Inc.
 
   File Name
-    plib_tmr_common.h
+    plib_power.c
 
   Summary
-    TMR peripheral library interface.
+    Power PLIB Implementation File.
 
   Description
-    This file defines the interface to the TC peripheral library.  This
-    library provides access to and control of the associated peripheral
-    instance.
+    This file defines the interface to the DSCTRL peripheral library.
+    This library provides access to and control of the associated Resets.
+
+  Remarks:
+    None.
 
 *******************************************************************************/
 
@@ -34,7 +36,7 @@
 *
 * IN NO EVENT WILL MICROCHIP BE LIABLE FOR ANY INDIRECT, SPECIAL, PUNITIVE,
 * INCIDENTAL OR CONSEQUENTIAL LOSS, DAMAGE, COST OR EXPENSE OF ANY KIND
-* WHATSOEVER RELATED TO THE SOFTWARE, HOWEVER CAUSED, EVEN IF MICROCHIP HAS
+* WHATSOEVER RELATED TO THE SOFTWARE, HOWEVER SOURCED, EVEN IF MICROCHIP HAS
 * BEEN ADVISED OF THE POSSIBILITY OR THE DAMAGES ARE FORESEEABLE. TO THE
 * FULLEST EXTENT ALLOWED BY LAW, MICROCHIP'S TOTAL LIABILITY ON ALL CLAIMS IN
 * ANY WAY RELATED TO THIS SOFTWARE WILL NOT EXCEED THE AMOUNT OF FEES, IF ANY,
@@ -42,79 +44,53 @@
 *******************************************************************************/
 // DOM-IGNORE-END
 
-#ifndef PLIB_TMR_COMMON_H    // Guards against multiple inclusion
-#define PLIB_TMR_COMMON_H
-
-
 // *****************************************************************************
 // *****************************************************************************
 // Section: Included Files
 // *****************************************************************************
 // *****************************************************************************
 
-/*  This section lists the other files that are included in this file.
-*/
-#include <stddef.h>
+#include "plib_power.h"
 
-// DOM-IGNORE-BEGIN
-#ifdef __cplusplus  // Provide C++ Compatibility
-
-extern "C" {
-
-#endif
-
-// DOM-IGNORE-END
-
+#define WAIT asm volatile("wait")
 // *****************************************************************************
 // *****************************************************************************
-// Section: Data Types
+// Section: Power Implementation
 // *****************************************************************************
 // *****************************************************************************
-/*  The following data type definitions are used by the functions in this
-    interface and should be considered part of it.
-*/
-
-
-// *****************************************************************************
-/* TMR_CALLBACK
-
-  Summary:
-    Use to register a callback with the TMR.
-
-  Description:
-    When a match is asserted, a callback can be activated.
-    Use TMR_CALLBACK as the function pointer to register the callback
-    with the match.
-
-  Remarks:
-    The callback should look like:
-      void callback(handle, context);
-	Make sure the return value and parameters of the callback are correct.
-*/
-
-typedef void (*TMR_CALLBACK)(uint32_t status, uintptr_t context);
-
-// *****************************************************************************
-
-typedef struct
+void POWER_LowPowerModeEnter (POWER_LOW_POWER_MODE mode)
 {
-    /*TMR callback function happens on Period match*/
-    TMR_CALLBACK callback_fn;
-    /* - Client data (Event Context) that will be passed to callback */
-    uintptr_t context;
+    bool check = false;
+    /* Unlock system */
+    SYSKEY = 0x00000000U;
+    SYSKEY = 0xAA996655U;
+    SYSKEY = 0x556699AAU;
 
-}TMR_TIMER_OBJECT;
+    switch(mode)
+    {
+        case LOW_POWER_IDLE_MODE:
+                        OSCCONCLR = _OSCCON_SLPEN_MASK;
+                        break;
+        case LOW_POWER_SLEEP_MODE:
+                        OSCCONSET = _OSCCON_SLPEN_MASK;
+                        break;
+        case LOW_POWER_DREAM_MODE:
+                        OSCCONSET = _OSCCON_SLPEN_MASK | _OSCCON_DRMEN_MASK;
+                        break;
+        default:
+                        check = true;
+                        break;
+    }
+    
+    if(check == true)
+    {
+        return;
+    }
 
-// DOM-IGNORE-BEGIN
-#ifdef __cplusplus  // Provide C++ Compatibility
+    /* Lock system */
+    SYSKEY = 0x0;
 
+    /* enter into selected low power mode */
+    WAIT;
 }
 
-#endif
-// DOM-IGNORE-END
-
-#endif //_PLIB_TMR_COMMON_H
-
-/**
- End of File
-*/

@@ -67,9 +67,7 @@
 // *****************************************************************************
 // *****************************************************************************
 void INPUT_CAPTURE_1_Handler (void);
-void TIMER_2_Handler (void);
 void INPUT_CAPTURE_2_Handler (void);
-void TIMER_3_Handler (void);
 void INPUT_CAPTURE_3_Handler (void);
 void INPUT_CAPTURE_4_Handler (void);
 void EXTERNAL_4_Handler (void);
@@ -96,19 +94,9 @@ void __ISR(_INPUT_CAPTURE_1_VECTOR, ipl1SRS) INPUT_CAPTURE_1_Handler (void)
     INPUT_CAPTURE_1_InterruptHandler();
 }
 
-void __ISR(_TIMER_2_VECTOR, ipl1SRS) TIMER_2_Handler (void)
-{
-    TIMER_2_InterruptHandler();
-}
-
 void __ISR(_INPUT_CAPTURE_2_VECTOR, ipl1SRS) INPUT_CAPTURE_2_Handler (void)
 {
     INPUT_CAPTURE_2_InterruptHandler();
-}
-
-void __ISR(_TIMER_3_VECTOR, ipl1SRS) TIMER_3_Handler (void)
-{
-    TIMER_3_InterruptHandler();
 }
 
 void __ISR(_INPUT_CAPTURE_3_VECTOR, ipl1SRS) INPUT_CAPTURE_3_Handler (void)

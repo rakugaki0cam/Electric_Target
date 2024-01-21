@@ -53,7 +53,6 @@
 #include "plib_tmr2.h"
 #include "interrupts.h"
 
-volatile static TMR_TIMER_OBJECT tmr2Obj;
 
 
 void TMR2_Initialize(void)
@@ -62,22 +61,21 @@ void TMR2_Initialize(void)
     T2CONCLR = _T2CON_ON_MASK;
 
     /*
-    SIDL = 0
+    SIDL = 1
     SYNC = 0
     TGATE = 0
     TCKPS =0
     T32   = 1
     TCS = 0
     */
-    T2CONSET = 0x8;
+    T2CONSET = 0x2008;
 
     /* Clear counter */
     TMR2 = 0x0;
 
     /*Set period */
-    PR2 = 17U;
+    PR2 = 119999999U;
 
-    IEC0SET = _IEC0_T2IE_MASK;
 
 }
 
@@ -114,37 +112,12 @@ uint32_t TMR2_FrequencyGet(void)
     return (60000000);
 }
 
-void __attribute__((used)) TIMER_2_InterruptHandler (void)
+
+bool TMR2_PeriodHasExpired(void)
 {
-    uint32_t status = IFS0bits.T2IF;
+    bool status = (IFS0bits.T2IF != 0U);
     IFS0CLR = _IFS0_T2IF_MASK;
 
-    if((tmr2Obj.callback_fn != NULL))
-    {
-        uintptr_t context = tmr2Obj.context;
-        tmr2Obj.callback_fn(status, context);
-    }
+    return status;
 }
-
-
-void TMR2_InterruptEnable(void)
-{
-
-    IEC0SET = _IEC0_T2IE_MASK;
-}
-
-
-void TMR2_InterruptDisable(void)
-{
-    IEC0CLR = _IEC0_T2IE_MASK;
-}
-
-
-void TMR2_CallbackRegister( TMR_CALLBACK callback_fn, uintptr_t context )
-{
-    /* Save callback_fn and context in local memory */
-    tmr2Obj.callback_fn = callback_fn;
-    tmr2Obj.context = context;
-}
-
 

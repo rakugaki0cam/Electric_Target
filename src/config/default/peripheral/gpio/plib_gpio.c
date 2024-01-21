@@ -77,6 +77,8 @@ void GPIO_Initialize ( void )
     /* PORTF Initialization */
     CNPUFSET = 0x3U; /* Pull-Up Enable */
     /* PORTG Initialization */
+    ANSELGCLR = 0x80U; /* Digital Mode Enable */
+    CNPUGSET = 0x80U; /* Pull-Up Enable */
 
     /* Unlock system for PPS configuration */
     SYSKEY = 0x00000000U;

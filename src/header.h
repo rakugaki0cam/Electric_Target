@@ -13,21 +13,25 @@
 #ifndef _HEADER_H    /* Guard against multiple inclusion */
 #define _HEADER_H
 
-//????
-#include <xc.h> 
-#include <stdint.h>
-#include <string.h>
-//
 
+//
+#include <xc.h>
 #include <stddef.h>                     // Defines NULL
 #include <stdbool.h>                    // Defines true
 #include <stdlib.h>                     // Defines EXIT_FAILURE
 #include "definitions.h"                // SYS function prototypes
+#include <string.h>
 
-#include "MyI2C1.h"
-#include "BME280_v3.h"
-#include "iP5306.h"
+//
+#include "BME280v3.h"
+#include "computeEpicenterV5.h"
+#include "dataDispSendV5.h"
 #include "ESP32slave.h"
+#include "iP5306.h"
+#include "log.h"
+#include "measureTimeV5.h"
+#include "MyI2C1.h"
+#include "PCF8574.h"
 
 
 
@@ -35,27 +39,34 @@
 #define OK      0
 #define ERROR   1
 
+//DEBUG
+//calculation error -> LED Yellow   //DEBUG 計算時の軽微なエラーの時黄色LEDを点ける
+#define DEBUG_LED   //_no
+#ifdef DEBUG_LED
+    #define LED_CAUTION   LED_YELLOW
+#else
+    #define LED_CAUTION   NO_OUTPUT
+#endif
+
+
+//着弾タイミングのフォールエッジをESP32とタマモニに送る
+#define     impact_PT4_On()     PT4_Clear()     //着弾センサ信号出力
+#define     impact_PT4_Off()    PT4_Set()       //着弾センサ信号クリア
+
+
+
 
 //Global
-extern bool    usb_in_flag;
+extern uint8_t      sensorCnt;                  //センサ入力順番のカウント
+extern uint16_t     ringPos;                    //ログデータポインタ
+extern debugger_mode_sour_t    debuggerMode;    //DEBUGger表示モード
 
-typedef enum
-{
-    POWERSAVING_NORMAL = 0,
-    POWERSAVING_SLEEP  = 1,
-    POWERSAVING_DEEPSLEEP = 2,
-} power_saving_mask_t;
-
-extern power_saving_mask_t sleep_flag;
-
-
-
-//
-void deep_sleep(void);
 
 //callback
-void main_sw_on_callback(EXTERNAL_INT_PIN, uintptr_t);
-void timer_1sec(uintptr_t);
+void mainSwOn_callback(EXTERNAL_INT_PIN, uintptr_t);
+void timer1sec_callback(uintptr_t);
+
+
 
 
 #endif //_HEADER_H

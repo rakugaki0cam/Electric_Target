@@ -1,5 +1,5 @@
 /*
- * File:   BME280_v3.c
+ * File:   BME280v3.c
  * 
  * Comments: PIC32MK-MCJ Harmony
  * 
@@ -10,27 +10,57 @@
  * 3.3V I2C
  * 
  * Revision history: 
- * 2024.01.02   _v3 BME280_v2より派生 タマモニ固有処理(表示等)部分は消去
+ * 2024.01.02   v3 BME280_v2より派生 タマモニ固有処理(表示等)部分は消去
+ * 2024.01.06   初期設定前にリセットを追加
  * 
  */
-
-
 #include "header.h"
-#include "BME280_v3.h"
+#include "BME280v3.h"
 
 
 //BME/BMP280 I2C接続(CSB:VDD -> I2C)
-#define     BME280_ID       0x76    //SDO:GND -> 0x76, VDD -> 0x77
-
-//ascii code
+#define     BME280_ID       0x76    //SDO=GND
+//#define     BME280_ID       0x77    //SDO=Vdd
+//register
+//補正データ
+#define     TRIM_PARA_ADD1  0x88    //0x88~0x8d T1~T3:温度, 0x8e~0x9f P1~P9:気圧
+#define     TRIM_PARA_ADD2  0xA1    //0xa1 H1:湿度          BMEのみ
+#define     TRIM_PARA_ADD3  0xE1    //0xe1～0xe7 H2~H7:湿度 BMEのみ
+//
+#define     REG_ID_CHECK    0xd0
+#define     ID_BME280_REP   0x60    //BME(P,T,H) reply value
+#define     ID_BMP280_REP   0x58    //BMP(P,T) reply value
+//
+#define     REG_RESET       0xe0    //パワーオンリセット
+#define     DATA_RESET      0xb6    //リセット実行時に書き込むデータ
+//
+#define     REG_CTRL_HUM    0xf2    //オーバーサンプリングHum(BME280 only)
+#define     REG_STAT        0xf3    //ステータス(Read only)[bit3]measurering, [bit0]im_update
+#define     REG_CTRL_MEAS   0xf4    //オーバーサンプリングTemp, press & 実行モード
+#define     REG_CONFIG      0xf5    //時間間隔、フィルター設定
+//測定データ
+#define     REG_PRESS       0xF7    //0xF7:[19:12], 0xF8:[11:4], 0xF9[bit7:4]:[3:0]
+#define     REG_TEMP        0xFA    //0xFA:[19:12], 0xFB:[11:4], 0xFC[bit7:4]:[3:0]
+#define     REG_HUMID       0xFD    //0xFD:[15:8], 0xFE:[7:0]
+    
+//半角カタカナアスキーコード
 #define     DEG             0xdf    // deg = 'ﾟ'  度の半角カナ  
 #define     DEG_C           0x8b    // degC = '℃'  の半角カナ  
 
+//Global
+float       air_temp_degree_c;      //気温
+
+
 //local
-uint32_t    Temp_OUT_raw, Pres_OUT_raw, Humi_OUT_raw;
-int32_t     Data_Temp_32;
-uint32_t    Data_Pres_32,Data_Humi_32;
-//float       Pr,Hu,Te;
+//読み出しデータ
+uint32_t    Temp32AdcData;      
+uint32_t    Pres32AdcData;
+uint32_t    Humi32AdcData;
+//計算値
+int32_t     TempS32x100;
+uint32_t    PresU32x100;
+uint32_t    HumiU32x1024;
+
 
 typedef enum{
     BMP280,
@@ -62,23 +92,38 @@ int16_t     dig_H5;   //12bit
 int8_t      dig_H6;
 
 
-bool BME280_Init(void){
-    //initialize
-    //ret value: 1:error, 0:OK
-#define DEBUG
+bool BME280_Reset(void){
+    //Power on Reset
     
-#define REG_ID_CHECK    0xd0
-#define ID_BME280_REP   0x60    //BME(P,T,H) return value
-#define ID_BMP280_REP   0x58    //BMP(P,T) return value
-    
-    uint8_t i2cTxData [2];
-    uint8_t i2cRxData [1] = {0};
-    
-    if(i2c1_Read1byteRegister(BME280_ID, REG_ID_CHECK, i2cRxData)){
+    if(i2c1_Write1byteRegister(BME280_ID, REG_RESET, DATA_RESET)){
         printf("BME/P280 error!\n");
         return ERROR;
     }
-    switch(i2cRxData[0]){
+    printf("BME/P280 RESET!\n");
+    return OK;
+}
+
+
+bool BME280_Init(void){
+    //initialize
+    //ret value: 1:error, 0:OK
+    
+#define DEBUG280_1
+    
+    uint8_t i2cTxData;
+    uint8_t i2cRxData [1] = {0};
+    
+    if (BME280_Reset()){
+        return ERROR;
+    }
+    //power on reset後はsleep mode
+
+    //ID check
+    if (i2c1_Read1byteRegister(BME280_ID, REG_ID_CHECK, i2cRxData)){
+        printf("BME/P280 error!\n");
+        return ERROR;
+    }
+    switch (i2cRxData[0]){
         case ID_BME280_REP:
             printf("BME280 init ");
             bmeFlag = BME280;
@@ -93,53 +138,61 @@ bool BME280_Init(void){
             break;
     }
     
-    //config
-#define REG_CTRL_HUM    0xF2    //Oversampling--BME280 only
-    uint8_t osrs_h = 0b001;     //[bit2:0]Hum: 000:skip, 001:x1, 010:x2, 011:x4, 100:x8, 101:x16
-#define REG_STAT        0xF3    //Status(Read only)[bit3]measurering, [bit0]im_update
-#define REG_CTRL_MEAS   0xF4    //Oversampling & Mode
-    uint8_t osrs_t = 0b010;     //[bit7:5]Temp: 000:skip, 001:x1, 010:x2, 011:x4, 100:x8, 101:x16
-    uint8_t osrs_p = 0b011;     //[bit4:2]Press: 000:skip, 001:x1, 010:x2, 011:x4, 100:x8, 101:x16
-    uint8_t mode = 0b11;        //[bit1:0]mode: 00:Sleep, 01:ForceMode, 11:NormalMode
-#define REG_CONFIG      0xF5    //Config
-    uint8_t t_sb = 0b101;       //[bit7:5]standby period(NormalMode) conversion timeは含まない。5(x1)~40(o.s. x16)msecかかる
+    //補正値読み出し
+    if (BME280_TrimRead()){
+        printf("error!\n");
+        return ERROR;
+    }
+    
+    //Config  注意!) 書込時の自動インクリメント無し 
+    uint8_t t_sb = 0b000;       //[bit7:5]standby period(NormalMode) conversion timeは含まない。5(x1)~40(o.s. x16)msecかかる
                                 // 000:0.5ms, 001:62.5ms 010:125ms, 011:250ms, 100:500ms, 101:1000ms,
                                 //(BME) 110:10ms, 111:20ms
                                 //(BMP) 110:2000ms, 111:4000ms
-    uint8_t filter = 0b010;     //[bit4:2]IIRfilter 000:off, 001:2, 010:4, 011:8, 100:16
- 
-    //data
-    i2cTxData[0] = (uint8_t)((osrs_t << 5) + (osrs_p << 2) + mode);
-    i2cTxData[1] = (uint8_t)((t_sb << 5) + (filter << 2));    
-    
+    uint8_t filter = 0b011;     //[bit4:2]IIRfilter 000:off, 001:2, 010:4, 011:8, 100:16
+    i2cTxData = (uint8_t)((t_sb << 5) + (filter << 2));    
+    if(i2c1_Write1byteRegister(BME280_ID, REG_CONFIG, i2cTxData)){
+        printf("error!\n");
+        return ERROR;
+    }
+    //Oversampling Humid --BME280 only
     if (BME280 == bmeFlag){
+        uint8_t osrs_h = 0b001;     //[bit2:0]OverSampling Hum: 000:skip, 001:x1, 010:x2, 011:x4, 100:x8, 101:x16
         if (i2c1_Write1byteRegister(BME280_ID, REG_CTRL_HUM, osrs_h)){
             printf("error!\n");
             return ERROR; 
         }
     }
-    if(i2c1_WriteDataBlock(BME280_ID, REG_CTRL_MEAS, &i2cTxData[0], 2)){
+    //Oversampling Temp Press & Mode -> Normalで測定が始まる
+    uint8_t osrs_t = 0b010;     //[bit7:5]OverSampling Temp: 000:skip, 001:x1, 010:x2, 011:x4, 100:x8, 101:x16
+    uint8_t osrs_p = 0b101;     //[bit4:2]OverSampling Press: 000:skip, 001:x1, 010:x2, 011:x4, 100:x8, 101:x16
+    uint8_t mode = 0b11;        //[bit1:0]mode: 00:Sleep, 01:ForceMode, 11:NormalMode
+    i2cTxData = (uint8_t)((osrs_t << 5) + (osrs_p << 2) + mode);
+    if(i2c1_Write1byteRegister(BME280_ID, REG_CTRL_MEAS, i2cTxData)){
         printf("error!\n");
         return ERROR;
     }
-    if (BME280_TrimRead()){
-        printf("error!\n");
-        return ERROR;
-    }
+    //
     printf("OK\n");
+    return OK;
+}
+
+
+bool BME280_Sleep(void){
+    //Sleep
+    uint8_t mode = 0b00000000;  //[bit1:0]mode: 00:Sleep
+    
+    if(i2c1_Write1byteRegister(BME280_ID, REG_CTRL_MEAS, mode)){
+        printf("error!\n");
+        return ERROR;
+    }
+    printf("\nBME/P280 SLEEP!\n");
     return OK;
 }
            
 
 bool BME280_TrimRead(void){
     //補正値の読み出し
-    
-//トリムパラメータ　アドレス
-#define     TRIM_PARA_ADD1  0x88    //0x88~0x8d T1~T3:温度, 0x8e~0x9f P1~P9:気圧
-//BMEのみ
-#define     TRIM_PARA_ADD2  0xA1    //0xa1 H1:湿度    
-#define     TRIM_PARA_ADD3  0xE1    //0xe1～0xe7 H2~H7:湿度
-    
     uint8_t     i2cRxData[24];
             
     if (i2c1_ReadDataBlock(BME280_ID, TRIM_PARA_ADD1, i2cRxData, 24)){
@@ -188,10 +241,7 @@ uint8_t BME280_Readout(void){
     //読み出しと表示
     //ret: status
     
-#define REG_PRESS   0xF7    //0xF7:[19:12], 0xF8:[11:4], 0xF9[bit7:4]:[3:0]
-#define REG_TEMP    0xFA    //0xFA:[19:12], 0xFB:[11:4], 0xFC[bit7:4]:[3:0]
-#define REG_HUMID   0xFD    //0xFD:[15:8], 0xFE:[7:0]
-    
+#define DEBUG280_2_no    
     uint8_t     i2cRxData[8];
     uint8_t     rxLen;
     
@@ -202,6 +252,7 @@ uint8_t BME280_Readout(void){
         BME_SM_PRESS,
         BME_SM_HUMID,
         BME_SM_ESPSEND,
+        BME_SM_STATUS_SOURCE_NUM
     } bme_status_t;
     static bme_status_t  status = BME_SM_IDLE;
     
@@ -223,42 +274,50 @@ uint8_t BME280_Readout(void){
             //printf("OK\n");
             
             //気圧　気温　湿度　の順
-            Pres_OUT_raw = ((uint32_t)i2cRxData[0] << 12) | ((uint16_t)i2cRxData[1] << 4) | (i2cRxData[2] >> 4);    //型をつけておかないと、ビットシフトした際にちょんぎれている
-            Temp_OUT_raw = ((uint32_t)i2cRxData[3] << 12) | ((uint16_t)i2cRxData[4] << 4) | (i2cRxData[5] >> 4);
+            Pres32AdcData = ((uint32_t)i2cRxData[0] << 12) | ((uint16_t)i2cRxData[1] << 4) | (i2cRxData[2] >> 4);    //型をつけておかないと、ビットシフトした際にちょんぎれている
+            Temp32AdcData = ((uint32_t)i2cRxData[3] << 12) | ((uint16_t)i2cRxData[4] << 4) | (i2cRxData[5] >> 4);
             if (BME280 == bmeFlag){
-                Humi_OUT_raw = ((uint16_t) i2cRxData[6] << 8 ) | i2cRxData[7];
+                Humi32AdcData = ((uint16_t) i2cRxData[6] << 8 ) | i2cRxData[7];
             }
             status = BME_SM_TEMP;
             break;
             
         case BME_SM_TEMP:
             //温度の計算
-            Data_Temp_32 = BME280_CompensateT((int32_t)Temp_OUT_raw);
+            TempS32x100 = BME280_CompensateT((int32_t)Temp32AdcData);
             // x0.01deg -40~85deg (-4000~0~8500 = 0xf060~0xffff,0x0~0x2134)
-            printf("\ntemp %5.1f%cC\n", ((float)Data_Temp_32 / 100), DEG);
+            air_temp_degree_c = (float)TempS32x100 / 100;
+
+#ifdef DEBUG280_2
+            printf("\ntemp %5.1f%cC\n", air_temp_degree_c, DEG);
+#endif
             status = BME_SM_PRESS;
             break;
             
         case BME_SM_PRESS:
             //気圧の計算
-            Data_Pres_32 = BME280_CompensateP((int32_t)Pres_OUT_raw);             ///user
+            PresU32x100 = BME280_CompensateP((int32_t)Pres32AdcData);
             // x0.01hPa 300~1100hPa (0~110000 = 0x00~0x1adb0)
-            printf("atm %6.1fhPa\n", ((float)Data_Pres_32 / 100));
+#ifdef DEBUG280_2
+            printf("atm %6.1fhPa\n", ((float)PresU32x100 / 100));
+#endif
             status = BME_SM_HUMID;
             break;
             
         case BME_SM_HUMID:
             //湿度の計算
             if (BME280 == bmeFlag){
-                Data_Humi_32 = BME280_CompensateH((int32_t)Humi_OUT_raw);             ///user
+                HumiU32x1024 = BME280_CompensateH((int32_t)Humi32AdcData);
                 // /1024 %RH  0~100%RH  (0~102400 = 0x0~0x19000)
-                //printf("hum %3.0f%%\n", ((float)Data_Humi_32 / 1024));
+#ifdef DEBUG280_2
+                printf("hum %3.0f%%\n", ((float)HumiU32x1024 / 1024));
+#endif
             }
             status = BME_SM_ESPSEND;
             break;
             
         case BME_SM_ESPSEND:
-            if (ESP32slave_WriteTempData(Data_Temp_32)){
+            if (ESP32slave_SendTempData(TempS32x100)){
                 printf("Temp data send error!\n");
             }
             status = BME_SM_IDLE;
@@ -280,7 +339,6 @@ uint8_t BME280_Readout(void){
 int32_t BME280_CompensateT(int32_t adc_T){
     //温度補正計算
     //"5123" = 51.23 deg C
-
     int32_t     var1, var2, T;
     
     var1 = ((((adc_T >> 3) - ((int32_t)dig_T1 << 1))) * ((int32_t)dig_T2)) >> 11;
@@ -289,7 +347,7 @@ int32_t BME280_CompensateT(int32_t adc_T){
     T = (t_fine * 5 + 128) >> 8;
     return T;
 
-/*  
+/* 
     double var1, var2, T; 
     var1 = (((double)adc_T) / 16384.0 - ((double)dig_T1) / 1024.0) * ((double)dig_T2);
     var2 = ((((double)adc_T) / 131072.0 - ((double)dig_T1) / 8192.0) * (((double)adc_T) / 131072.0 - ((double) dig_T1) / 8192.0)) * ((double)dig_T3);

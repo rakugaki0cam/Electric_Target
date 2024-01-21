@@ -68,20 +68,20 @@ void CMP_Initialize (void)
     /*  Setup CM1CON    */
     /*  CCH     = 1    */
     /*  CREF    = 1    */
-    /*  EVPOL   = 1    */
+    /*  EVPOL   = 2    */
     /*  OPLPWR  = false  */
     /*  ENPGA   = false  */
-    /*  HYSPOL  = 0  */
+    /*  HYSPOL  = 1  */
     /*  HYSSEL  = Set highest hysteresis level (Typical 45 mV)  */
     /*  CFSEL   = SYSCLK Clock  */
     /*  CFLTREN = false  */
     /*  CFDIV   = 1:1 Clock Divide  */
-    /*  CPOL    = 0    */
+    /*  CPOL    = 1    */
     /*  COE     = true     */
     IEC1SET = _IEC1_CMP1IE_MASK;
     /*  OPAON   = false    */
     /*  ENPGA   = false    */
-    CM1CON = 0x3004051;
+    CM1CON = 0x13006091;
 
     /* Value loaded into CM1MSKCON is formed by combining configuration selected via MHC */
     CM1MSKCON = 0x0;
@@ -89,20 +89,20 @@ void CMP_Initialize (void)
     /*  Setup CM2CON    */
     /*  CCH     = 3    */
     /*  CREF    = 1    */
-    /*  EVPOL   = 1    */
+    /*  EVPOL   = 2    */
     /*  OPLPWR  = false  */
     /*  ENPGA   = false  */
-    /*  HYSPOL  = 0  */
+    /*  HYSPOL  = 1  */
     /*  HYSSEL  = Set highest hysteresis level (Typical 45 mV)  */
     /*  CFSEL   = SYSCLK Clock  */
     /*  CFLTREN = false  */
     /*  CFDIV   = 1:1 Clock Divide  */
-    /*  CPOL    = 0    */
+    /*  CPOL    = 1    */
     /*  COE     = true     */
     IEC1SET = _IEC1_CMP2IE_MASK;
     /*  OPAON   = false    */
     /*  ENPGA   = false    */
-    CM2CON = 0x3004053;
+    CM2CON = 0x13006093;
 
     /* Value loaded into CM2MSKCON is formed by combining configuration selected via MHC */
     CM2MSKCON = 0x0;
@@ -110,20 +110,20 @@ void CMP_Initialize (void)
     /*  Setup CM3CON    */
     /*  CCH     = 3    */
     /*  CREF    = 1    */
-    /*  EVPOL   = 1    */
+    /*  EVPOL   = 2    */
     /*  OPLPWR  = false  */
     /*  ENPGA   = false  */
-    /*  HYSPOL  = 0  */
+    /*  HYSPOL  = 1  */
     /*  HYSSEL  = Set highest hysteresis level (Typical 45 mV)  */
     /*  CFSEL   = SYSCLK Clock  */
     /*  CFLTREN = false  */
     /*  CFDIV   = 1:1 Clock Divide  */
-    /*  CPOL    = 0    */
+    /*  CPOL    = 1    */
     /*  COE     = true     */
     IEC5SET = _IEC5_CMP3IE_MASK;
     /*  OPAON   = false    */
     /*  ENPGA   = false    */
-    CM3CON = 0x3004053;
+    CM3CON = 0x13006093;
 
     /* Value loaded into CM3MSKCON is formed by combining configuration selected via MHC */
     CM3MSKCON = 0x0;
@@ -131,16 +131,16 @@ void CMP_Initialize (void)
     /*  Setup CM4CON    */
     /*  CCH     = 0    */
     /*  CREF    = 1    */
-    /*  EVPOL   = 1    */
-    /*  HYSPOL  = 0  */
+    /*  EVPOL   = 2    */
+    /*  HYSPOL  = 1  */
     /*  HYSSEL  = Set highest hysteresis level (Typical 45 mV)  */
     /*  CFSEL   = SYSCLK Clock  */
     /*  CFLTREN = false  */
     /*  CFDIV   = 1:1 Clock Divide  */
-    /*  CPOL    = 0    */
+    /*  CPOL    = 1    */
     /*  COE     = true     */
     IEC5SET = _IEC5_CMP4IE_MASK;
-    CM4CON = 0x3004050;
+    CM4CON = 0x13006090;
 
     /* Value loaded into CM4MSKCON is formed by combining configuration selected via MHC */
     CM4MSKCON = 0x0;
@@ -148,20 +148,20 @@ void CMP_Initialize (void)
     /*  Setup CM5CON    */
     /*  CCH     = 1    */
     /*  CREF    = 1    */
-    /*  EVPOL   = 1    */
+    /*  EVPOL   = 2    */
     /*  OPLPWR  = false  */
     /*  ENPGA   = false  */
-    /*  HYSPOL  = 0  */
+    /*  HYSPOL  = 1  */
     /*  HYSSEL  = Set highest hysteresis level (Typical 45 mV)  */
     /*  CFSEL   = SYSCLK Clock  */
     /*  CFLTREN = false  */
     /*  CFDIV   = 1:1 Clock Divide  */
-    /*  CPOL    = 0    */
+    /*  CPOL    = 1    */
     /*  COE     = true     */
     IEC5SET = _IEC5_CMP5IE_MASK;
     /*  OPAON   = false    */
     /*  ENPGA   = false    */
-    CM5CON = 0x3004051;
+    CM5CON = 0x13006091;
 
     /* Value loaded into CM5MSKCON is formed by combining configuration selected via MHC */
     CM5MSKCON = 0x0;

@@ -85,12 +85,7 @@ uint32_t TMR3_CounterGet(void);
 
 uint32_t TMR3_FrequencyGet(void);
 
-void TMR3_InterruptEnable(void);
-
-void TMR3_InterruptDisable(void);
-
-void TMR3_CallbackRegister( TMR_CALLBACK callback_fn, uintptr_t context );
-
+bool TMR3_PeriodHasExpired(void);
 
 // DOM-IGNORE-BEGIN
 #ifdef __cplusplus  // Provide C++ Compatibility

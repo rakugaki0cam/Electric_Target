@@ -11,18 +11,27 @@
  * 
  */
 
-
 #include "header.h"
 #include "ESP32slave.h"
+
+#define     ESP_SLAVE_ID        0x25    //I2C ID ESP32S3 Yellow Board LCD&WiFi
+//
+#define     REG_ID_CHECK        0x01    //ID確認　返答"ESP"
+#define     REG_TARGET_CLEAR    0x20    //ターゲットクリアコマンド
+#define     REG_TARGET_RESET    0x21    //ターゲットリセットコマンド
+#define     REG_TARGET_DEFAULT  0x22    //ターゲットデフォルトセットコマンド
+#define     REG_DATA_IMPACT     0x30    //着弾データを送る
+#define     REG_DATA_TEMP       0x60    //温度データを送る
+#define     REG_DATA_BAT        0x70    //バッテリーデータを送る
+#define     REG_TARGET_SLEEP    0x90    //ターゲットスリープコマンド
+#define     DATA_SLEEP_KEY      0x99    //スリープのkey
 
 
 
 bool ESP32slave_Init(void){
-    //ESP32 I2C slave check
+    //ESP32 I2C slave ID check   
+#define DEBUG32_1_no
     
-#define DEBUG_no
-    
-#define ESP_SLAVE_ID        0x25        //ESP32S3 Yellow Board LCD&WiFi
     uint8_t i2cRxData [4] = {0,0,0,0};  //エンドマークを含む
     
     printf("ESP32S3 init ");
@@ -30,102 +39,145 @@ bool ESP32slave_Init(void){
         printf("error!\n");
         return ERROR;
     }
-#ifdef  DEBUG
+#ifdef  DEBUG32_1
     printf("\n(detect '%s').", i2cRxData);   
 #endif
     printf("OK\n"); 
     return OK;
 }
 
+//**** send data **************************************************
 
-bool ESP32slave_WriteBatData(bool init) {
+
+bool ESP32slave_SendBatData(void) {
     //バッテリ電圧計測しESP32へ送る
     //init=1:初回
+#define DEBUG32_2_no
+#define DEBUG32_3_no
     
-#define REG_BAT_STATUS  0x70    
-#define     DEBUG_no
-    
-//#define     ADCH_VBAT   ADCHS_CH1
-#define     ADCH_VBAT   ADCHS_CH19
-#define     VREFP       2.493       //V
-#define     RA          46.9        //kohm
-#define     RB          9.93        //kohm
-#define     SAMPLES     8           //max 16  12bit x 16 
-    
-    float               bat_v;
-    static uint16_t     batv[SAMPLES];      //data arry
-    static uint8_t      ring_cnt = 0;       
-    uint16_t            sum_batv;
-    uint8_t             dataToEsp[4];
-    uint16_t            batToEsp;           //batV*1000[V]
-    uint8_t             i;
+    uint8_t     dataToEsp[4];
+    float       batV;
         
-    //平均用データ配列を埋める
-    if (init == true){
-        for(i = 0; i < SAMPLES; i++){
-            ADCHS_ChannelConversionStart(ADCH_VBAT);
-            while(!ADCHS_ChannelResultIsReady(ADCH_VBAT));
-            batv[i] = ADCHS_ChannelResultGet(ADCH_VBAT);  
-        }
-        //return OK;
-    }
-    
-    //normal
-    ADCHS_ChannelConversionStart(ADCH_VBAT);
-    while(!ADCHS_ChannelResultIsReady(ADCH_VBAT));
-    batv[ring_cnt] = ADCHS_ChannelResultGet(ADCH_VBAT);    
-    //printf("%1d:%03x ", ring_cnt, batv[ring_cnt]);
+    batV = batteryVolt(0);
+#ifdef DEBUG32_2
+    printf("\nBatV:%4.2fV", batV);
+#endif
+    batV *= 1000;            //1000倍値
 
-    ring_cnt ++;
-    if (ring_cnt >= SAMPLES){
-        ring_cnt = 0;
-    }
-    
-    sum_batv = 0;
-    for(i = 0; i < SAMPLES; i++){
-        sum_batv += batv[i];
-    }
-    
-    bat_v = (float)sum_batv / SAMPLES * VREFP / 4096 * (RA + RB) / RB;    //12bit
-    printf("\nBatV:%4.2fV", bat_v);
-     
-    ip5306_ReadStatus(dataToEsp);
-    if (sleep_flag != POWERSAVING_NORMAL ){
-        return OK;
-    }
+    ip5306_ReadStatus(&dataToEsp[0]);
     
     //write to ESP32slave
-    batToEsp = bat_v * 1000;            //1000倍値
+    if (sleepStat != POWERSAVING_NORMAL ){
+        return OK;
+    }
     //dataToEsp[0]-> bat status data ip5306_read_statusで取得
-    dataToEsp[1] = batToEsp >> 8;
-    dataToEsp[2] = batToEsp & 0xff;
+    dataToEsp[1] = ((uint16_t)batV >> 8) & 0xff;
+    dataToEsp[2] = (uint16_t)batV & 0xff;
 
-    if (i2c1_WriteDataBlock(ESP_SLAVE_ID, REG_BAT_STATUS, &dataToEsp[0], 3)){
+    if (i2c1_WriteDataBlock(ESP_SLAVE_ID, REG_DATA_BAT, &dataToEsp[0], 3)){
         printf("ESPslave error!\n");
         return ERROR;
     }
-#ifdef DEBUG
-    printf("to ESP(%02X)- %02X %02X %02X\n", REG_BAT_STATUS, dataToEsp[0], dataToEsp[1], dataToEsp[2]);
+#ifdef DEBUG32_3
+    printf("to ESP(%02X)- %02X %02X %02X\n", REG_DATA_BAT, dataToEsp[0], dataToEsp[1], dataToEsp[2]);
 #endif
     return OK;
 }
 
 
-bool ESP32slave_WriteTempData(uint32_t temp){
+bool ESP32slave_SendTempData(uint32_t temp){
     //気温データをESP32へ送る
     //temp:温度データ
-#define REG_TEMP_STATUS  0x60  
     
     uint8_t     dataToEsp[2];
 
     dataToEsp[0] = (uint8_t)(temp >> 8) & 0xff;
     dataToEsp[1] = (uint8_t)temp & 0xff;
 
-    if (i2c1_WriteDataBlock(ESP_SLAVE_ID, REG_TEMP_STATUS, &dataToEsp[0], 2)){
+    if (i2c1_WriteDataBlock(ESP_SLAVE_ID, REG_DATA_TEMP, &dataToEsp[0], 2)){
+        printf("ESPslave error!\n");
+        return ERROR;
+    }
+    return OK;
+}
+
+
+
+bool ESP32slave_SendImpactData(uint8_t* dataToEsp, uint8_t len){
+    //着弾データを送信
+    //len:バイト数
+    //送る前の変数の型は呼び出しの際(uint8_t*)でキャストすれば　なんでもOK。
+
+    if (i2c1_WriteDataBlock(ESP_SLAVE_ID, REG_DATA_IMPACT, &dataToEsp[0], len)){
         printf("ESPslave error!\n");
         return ERROR;
     }
     return OK;
 }
     
+/*
+bool ESP32slave_SendImpactData(float* impactData){
+    //着弾データを送信
+    //float 4バイト変数を1バイトごとの配列に変換
+    uint8_t     dataToEsp[12];
+    uint8_t*    pointerByte;    //ポインタ変数 - uint8_tなので1バイトずつ進む
+    uint8_t     i;
     
+    pointerByte = (uint8_t*)&impactData[0];
+    for (i = 0; i < 12; i++){
+        dataToEsp[i] = pointerByte[i];
+    }
+
+    if (i2c1_WriteDataBlock(ESP_SLAVE_ID, REG_DATA_IMPACT, &dataToEsp[0], 12)){
+        printf("ESPslave error!\n");
+        return ERROR;
+    }
+    return OK;
+}
+*/
+
+
+//**** command **************************************************
+
+bool ESP32slave_SleepCommand(void){  
+    //ESP32へスリープ要請
+
+    if (i2c1_Write1byteRegister(ESP_SLAVE_ID, REG_TARGET_SLEEP, DATA_SLEEP_KEY)){
+        printf("ESPslave error!\n");
+        return ERROR;
+    }
+    return OK;
+}
+
+
+bool ESP32slave_ClearCommand(void){  
+    //ESP32へターゲットクリア
+
+    if (i2c1_Write1byteRegister(ESP_SLAVE_ID, REG_TARGET_CLEAR, 0)){
+        printf("ESPslave error!\n");
+        return ERROR;
+    }
+    return OK;
+}
+
+
+bool ESP32slave_ResetCommand(void){  
+    //ESP32へターゲットリセット
+
+    if (i2c1_Write1byteRegister(ESP_SLAVE_ID, REG_TARGET_RESET, 0)){
+        printf("ESPslave error!\n");
+        return ERROR;
+    }
+    return OK;
+}
+
+
+bool ESP32slave_DefaultSetCommand(void){  
+    //ESP32へターゲットデフォルトセッティング
+
+    if (i2c1_Write1byteRegister(ESP_SLAVE_ID, REG_TARGET_DEFAULT, 0)){
+        printf("ESPslave error!\n");
+        return ERROR;
+    }
+    return OK;
+}

@@ -4,6 +4,13 @@ attributes: {id: cmp}
 children:
 - type: Symbols
   children:
+  - type: Hex
+    attributes: {id: CMP_1_CMxMSKCON_VALUE}
+    children:
+    - type: Values
+      children:
+      - type: Dynamic
+        attributes: {id: cmp, value: '0'}
   - type: KeyValueSet
     attributes: {id: CMP_1_CON_CCH}
     children:
@@ -19,6 +26,13 @@ children:
       - type: User
         attributes: {value: 'true'}
   - type: KeyValueSet
+    attributes: {id: CMP_1_CON_CPOL}
+    children:
+    - type: Values
+      children:
+      - type: User
+        attributes: {value: '1'}
+  - type: KeyValueSet
     attributes: {id: CMP_1_CON_CREF}
     children:
     - type: Values
@@ -27,6 +41,13 @@ children:
         attributes: {value: '1'}
   - type: KeyValueSet
     attributes: {id: CMP_1_CON_EVPOL}
+    children:
+    - type: Values
+      children:
+      - type: User
+        attributes: {value: '2'}
+  - type: KeyValueSet
+    attributes: {id: CMP_1_CON_HYSPOL}
     children:
     - type: Values
       children:
@@ -52,7 +73,21 @@ children:
     - type: Values
       children:
       - type: Dynamic
-        attributes: {id: cmp, value: '50348113'}
+        attributes: {id: cmp, value: '318791825'}
+  - type: Boolean
+    attributes: {id: CMP_1_MSKCON_HLMS}
+    children:
+    - type: Values
+      children:
+      - type: Dynamic
+        attributes: {id: cmp, value: 'false'}
+  - type: Hex
+    attributes: {id: CMP_2_CMxMSKCON_VALUE}
+    children:
+    - type: Values
+      children:
+      - type: Dynamic
+        attributes: {id: cmp, value: '0'}
   - type: KeyValueSet
     attributes: {id: CMP_2_CON_CCH}
     children:
@@ -68,6 +103,13 @@ children:
       - type: User
         attributes: {value: 'true'}
   - type: KeyValueSet
+    attributes: {id: CMP_2_CON_CPOL}
+    children:
+    - type: Values
+      children:
+      - type: User
+        attributes: {value: '1'}
+  - type: KeyValueSet
     attributes: {id: CMP_2_CON_CREF}
     children:
     - type: Values
@@ -76,6 +118,13 @@ children:
         attributes: {value: '1'}
   - type: KeyValueSet
     attributes: {id: CMP_2_CON_EVPOL}
+    children:
+    - type: Values
+      children:
+      - type: User
+        attributes: {value: '2'}
+  - type: KeyValueSet
+    attributes: {id: CMP_2_CON_HYSPOL}
     children:
     - type: Values
       children:
@@ -94,7 +143,21 @@ children:
     - type: Values
       children:
       - type: Dynamic
-        attributes: {id: cmp, value: '50348115'}
+        attributes: {id: cmp, value: '318791827'}
+  - type: Boolean
+    attributes: {id: CMP_2_MSKCON_HLMS}
+    children:
+    - type: Values
+      children:
+      - type: Dynamic
+        attributes: {id: cmp, value: 'false'}
+  - type: Hex
+    attributes: {id: CMP_3_CMxMSKCON_VALUE}
+    children:
+    - type: Values
+      children:
+      - type: Dynamic
+        attributes: {id: cmp, value: '0'}
   - type: KeyValueSet
     attributes: {id: CMP_3_CON_CCH}
     children:
@@ -110,6 +173,13 @@ children:
       - type: User
         attributes: {value: 'true'}
   - type: KeyValueSet
+    attributes: {id: CMP_3_CON_CPOL}
+    children:
+    - type: Values
+      children:
+      - type: User
+        attributes: {value: '1'}
+  - type: KeyValueSet
     attributes: {id: CMP_3_CON_CREF}
     children:
     - type: Values
@@ -118,6 +188,13 @@ children:
         attributes: {value: '1'}
   - type: KeyValueSet
     attributes: {id: CMP_3_CON_EVPOL}
+    children:
+    - type: Values
+      children:
+      - type: User
+        attributes: {value: '2'}
+  - type: KeyValueSet
+    attributes: {id: CMP_3_CON_HYSPOL}
     children:
     - type: Values
       children:
@@ -136,7 +213,21 @@ children:
     - type: Values
       children:
       - type: Dynamic
-        attributes: {id: cmp, value: '50348115'}
+        attributes: {id: cmp, value: '318791827'}
+  - type: Boolean
+    attributes: {id: CMP_3_MSKCON_HLMS}
+    children:
+    - type: Values
+      children:
+      - type: Dynamic
+        attributes: {id: cmp, value: 'false'}
+  - type: Hex
+    attributes: {id: CMP_4_CMxMSKCON_VALUE}
+    children:
+    - type: Values
+      children:
+      - type: Dynamic
+        attributes: {id: cmp, value: '0'}
   - type: KeyValueSet
     attributes: {id: CMP_4_CON_CCH}
     children:
@@ -152,6 +243,13 @@ children:
       - type: User
         attributes: {value: 'true'}
   - type: KeyValueSet
+    attributes: {id: CMP_4_CON_CPOL}
+    children:
+    - type: Values
+      children:
+      - type: User
+        attributes: {value: '1'}
+  - type: KeyValueSet
     attributes: {id: CMP_4_CON_CREF}
     children:
     - type: Values
@@ -160,6 +258,13 @@ children:
         attributes: {value: '1'}
   - type: KeyValueSet
     attributes: {id: CMP_4_CON_EVPOL}
+    children:
+    - type: Values
+      children:
+      - type: User
+        attributes: {value: '2'}
+  - type: KeyValueSet
+    attributes: {id: CMP_4_CON_HYSPOL}
     children:
     - type: Values
       children:
@@ -178,7 +283,21 @@ children:
     - type: Values
       children:
       - type: Dynamic
-        attributes: {id: cmp, value: '50348112'}
+        attributes: {id: cmp, value: '318791824'}
+  - type: Boolean
+    attributes: {id: CMP_4_MSKCON_HLMS}
+    children:
+    - type: Values
+      children:
+      - type: Dynamic
+        attributes: {id: cmp, value: 'false'}
+  - type: Hex
+    attributes: {id: CMP_5_CMxMSKCON_VALUE}
+    children:
+    - type: Values
+      children:
+      - type: Dynamic
+        attributes: {id: cmp, value: '0'}
   - type: KeyValueSet
     attributes: {id: CMP_5_CON_CCH}
     children:
@@ -194,6 +313,13 @@ children:
       - type: User
         attributes: {value: 'true'}
   - type: KeyValueSet
+    attributes: {id: CMP_5_CON_CPOL}
+    children:
+    - type: Values
+      children:
+      - type: User
+        attributes: {value: '1'}
+  - type: KeyValueSet
     attributes: {id: CMP_5_CON_CREF}
     children:
     - type: Values
@@ -202,6 +328,13 @@ children:
         attributes: {value: '1'}
   - type: KeyValueSet
     attributes: {id: CMP_5_CON_EVPOL}
+    children:
+    - type: Values
+      children:
+      - type: User
+        attributes: {value: '2'}
+  - type: KeyValueSet
+    attributes: {id: CMP_5_CON_HYSPOL}
     children:
     - type: Values
       children:
@@ -220,6 +353,13 @@ children:
     - type: Values
       children:
       - type: Dynamic
-        attributes: {id: cmp, value: '50348113'}
+        attributes: {id: cmp, value: '318791825'}
+  - type: Boolean
+    attributes: {id: CMP_5_MSKCON_HLMS}
+    children:
+    - type: Values
+      children:
+      - type: Dynamic
+        attributes: {id: cmp, value: 'false'}
 - type: ElementPosition
   attributes: {x: '365', y: '285', id: cmp}

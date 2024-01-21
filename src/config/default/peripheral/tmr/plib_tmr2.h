@@ -85,12 +85,7 @@ uint32_t TMR2_CounterGet(void);
 
 uint32_t TMR2_FrequencyGet(void);
 
-void TMR2_InterruptEnable(void);
-
-void TMR2_InterruptDisable(void);
-
-void TMR2_CallbackRegister( TMR_CALLBACK callback_fn, uintptr_t context );
-
+bool TMR2_PeriodHasExpired(void);
 
 // DOM-IGNORE-BEGIN
 #ifdef __cplusplus  // Provide C++ Compatibility

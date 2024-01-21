@@ -58,9 +58,7 @@
 // *****************************************************************************
 
 void INPUT_CAPTURE_1_InterruptHandler( void );
-void TIMER_2_InterruptHandler( void );
 void INPUT_CAPTURE_2_InterruptHandler( void );
-void TIMER_3_InterruptHandler( void );
 void INPUT_CAPTURE_3_InterruptHandler( void );
 void INPUT_CAPTURE_4_InterruptHandler( void );
 void EXTERNAL_4_InterruptHandler( void );

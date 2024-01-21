@@ -1,9 +1,22 @@
 /*******************************************************************************
  * Electric TARGET #2 V5
  *      PIC32MK0512MCJ064  3.3V  120MHz
- *          Xtal 8MHz       2nd 32.768kHz
- *          Comparator: 5 used
- *          InputCapture: 5 used
+ *          Xtal 8MHz       2nd Xtal 32.768kHz
+ * 
+ * V5   2号機
+ *      マイク5個
+ *      Comparator: 5 used
+ *      InputCapture: 5 used
+ *      データはI2Cマスターとして、ESP32S3(7"LCD Yellow board)　slaveへ送信
+ * 
+ *      5つのセンサから、3つのセンサを選んで座標を計算 -> 10とおりの結果
+ *      センサ1を抜いた時の結果は4とおり -> 4点のばらつきを計算。
+ *      同様にセンサ2を抜いた時のばらつき、
+ *      。。。センサ5を抜いた時のばらつき、
+ *      の5とおりのうちの一番ばらつきが小さいものを採用する。
+ * 
+ * DEBUGGer: 9600bps　-> 115200bps (2014.01.17 ~)
+ * 
  * 
  * Main.c
  * 
@@ -12,33 +25,53 @@
  * 2023.12.20   v.0.10  USB充電時の長押しオフに見えるようにスリープモードを設定
  * 2023.12.24   v.0.12  I2Cの修正、バッテリーと充電時スリープ機能の整理
  * 2023.12.24   v.0.13  ESP32からの読み出し用関数
- * 2024.01.02   v.0.14  BMP280気温気圧センサ追加
- * 
- * 
+ * 2024.01.03   v.0.14  BMP280気温気圧センサ追加
+ *                      Compiler optimization level -0  for DEBUG
+ * 2024.01.06   v.0.20  電源まわり完了　(espスリープ)
+ * 2024.01.08   v.0.21  コンパレータ入力　測定部の修正
+ * 2024.01.12   v.0.22  分散の計算。ばらつき最小グループを採用。
+ * 2024.01.14   v.0.23  正面LEDインジケータのためI2C I/Oエキスパンダ追加。
+ * 2024.01.17   v.0.24  マトLCDへの表示成功。UARTデバッガ出力を9600->115200bpsへ
+ * 2024.01.19   v.0.25  Harmony -> MCCへ
+ * 2024.01.20   v.0.30  計算間違い修正　z[1]のところz[0]と間違えていたためccが900ほど違っていて計算座標がずれていた。(1号機_V4も修正済み)
+ * 2024.01.21   v.0.31  フルデバッグモード..計算経過を追加
+ * 2024.01.21   v.0.40  センサ3個が一直線に並んでいる時(e=0)の計算式を追加。
  * 
  * 
  * 
  * 
  *******************************************************************************/
 
+
 #include "header.h"
 
 
 //Global
-bool    usb_in_flag = 0;
-power_saving_mask_t sleep_flag = POWERSAVING_NORMAL;
+uint16_t    ringPos = 0;            //ログデータポインタ
+uint8_t     sensorCnt;              //センサ入力順番のカウント  ////////////////////////
+//debugger_mode_sour_t  debuggerMode = NONE;
+debugger_mode_sour_t    debuggerMode = FULL_DEBUG;
 
 //local
-const uint8_t fw_ver[] = "0.14";                        //version
-bool    main_sw_flag = 0;
-bool    timer_1sec_flag = 0;
-uint8_t sleep_sw_timer = 0;
-uint8_t disp_timer = 0;
+const uint8_t fw_ver[] = "0.40";    //firmware version
+bool        mainSwFlag = 0;         //メインスイッチ割込
+bool        timer1secFlag = 0;      //RTCC 1秒割込
+uint8_t     dispTimer = 0;
+uint8_t     ledTimer = 0;           //ステータスLEDを消すまでのタイマー
+#define     BUF_NUM         5       //UARTデータ読込バッファ数
+uint8_t     buf[BUF_NUM];           //UARTデータ読込バッファ
+uint8_t     i;
 
 
 
-int main ( void )
-{
+int main ( void ){
+    uint8_t i;
+
+    meas_stat_sor_t measStat;
+ 
+    uint16_t                shotCnt = 0;     //ショットカウントは1から。0は入力無し
+
+    
     //Initialize all modules
     SYS_Initialize ( NULL );
     
@@ -61,98 +94,187 @@ int main ( void )
     printf("\n");
     printf("********************\n");
     printf("* electric TARGET  *\n");
-    printf("*  #2     ver.%s *\n", fw_ver);
+    printf("*  #2  PIC32MK     *\n");
+    printf("*        ver.%s  *\n", fw_ver);
     printf("********************\n");
+    printf(">full debug mode\n");    /////////デバッグ中
+    printf("mode change .. R\n");
     printf("--- INIT -----------\n");
 
-    
+    //Pin Interrupt
+    ICAP1_CallbackRegister(detectSensor1, 0);
+    ICAP2_CallbackRegister(detectSensor2, 0);
+    ICAP3_CallbackRegister(detectSensor3, 0);
+    ICAP4_CallbackRegister(detectSensor4, 0);
+    ICAP5_CallbackRegister(detectSensor5, 0);
+
     //I2C Init
     I2C1_CallbackRegister(MyI2CCallback, 0);    //NULL);
-    ip5306_Init();
-    BME280_Init();
-    ESP32slave_Init();
+    ip5306_Init();      //Li-ion Battery charger&booster
+    BME280_Init();      //BMP280 temp&pressure
+    ESP32slave_Init();  //LCD&WiFi
+    PCF8574_Init();     //IOexpander LED
     
     //comparator DAC
-    float       v_th = 0.200; //V CDAconverter
+    uint16_t    compVth = 100;//mV  CDAconverter/////////////////////////////////////////
     uint16_t    val_12bit;
-    val_12bit = (float)4096 / 3.3 * v_th;
-    printf("Vth=%4.2fV:%d(12bit)\n", v_th, val_12bit);
+    val_12bit = 4096 / 3300 * compVth;
+    printf("Vth=%5dmV:%03x(12bit)\n", compVth, val_12bit);
     CDAC2_DataWrite(val_12bit);
     
     //Main SW interrupt INT4
-    EVIC_ExternalInterruptCallbackRegister(EXTERNAL_INT_4, main_sw_on_callback, 0);
+    EVIC_ExternalInterruptCallbackRegister(EXTERNAL_INT_4, mainSwOn_callback, 0);
     EVIC_ExternalInterruptEnable(EXTERNAL_INT_4);
     
     //RTCC
-    RTCC_CallbackRegister(timer_1sec, 0);
+    RTCC_CallbackRegister(timer1sec_callback, 0);   //1秒ごと割込
     
     printf("--------------------\n");
     printf("\n");
     
     //batV init
-    ESP32slave_WriteBatData(1);    //initialize
+    batteryVolt(1);    //initialize
+    
+    //comparator ON
+    CMP_1_CompareEnable();
+    CMP_2_CompareEnable();
+    CMP_3_CompareEnable();
+    CMP_4_CompareEnable();
+    CMP_5_CompareEnable();
+    
+    measureInit();
+    clearData(); 
     
     
-//**** MAIN LOOP *********    
+//**** MAIN LOOP ********************************************** 
     while ( true )
     {
         //Maintain state machines of all polled MPLAB Harmony modules.
         SYS_Tasks ( );
         
-        
-        if (timer_1sec_flag == 1){
-            timer_1sec_flag = 0;
-            disp_timer++;
+        //
+        if (sensorCnt != 0){
+            //センサー入力あり = 測定中
+            LED_BLUE_Set();
             
-            if ((disp_timer % 8) == 0){/////////////////////// interval
-                LED_BLUE_Set();
-                ESP32slave_WriteBatData(0);
-                LED_BLUE_Clear();
-            }else{
-                BME280_Readout();
-            }
-        }
-        
-        if (main_sw_flag == 1){
-            //INT4
-            CORETIMER_DelayMs(50);
-            if(MAIN_SW_Get() == 0){
-                //スイッチ押されている
-                printf("mainSW ON\n");
-                if (sleep_flag != POWERSAVING_NORMAL){
-                    //スリープ、ディープスリープ中ならリスタート
-                    main_sw_flag = 0;                
-                    if(MAIN_SW_Get() == 0){
-                        printf("\n");
-                        printf("***** ReSTART! *****\n");
-                        CORETIMER_DelayMs(500);
-                        RCON_SoftwareReset();       //リセット
-                    }
-                }else{
-                    //スリープ中でない時は長押しスタート
-                    sleep_sw_timer = 0;
-                    while(!MAIN_SW_Get()){
-                        //ボタンが押されている
-                        CORETIMER_DelayMs(100);
-                        printf(".");
-                        sleep_sw_timer++;
-                        if (sleep_sw_timer > 30){
-                            //スリープへ
-                            sleep_flag = POWERSAVING_SLEEP;
-                            ESP_POWER_Clear();          //ESP32 5V LoadSwitch
-                            ANALOG_POWER_Clear();       //Analog 3.3V LDO
-                            printf("SLEEP\n");          //充電完了待ち
-                            printf("\n");
-                            break;
-                        }
-                    }
-                    main_sw_flag = 0;
-                    printf("\n");
-                    CORETIMER_DelayMs(100);
+#define TIME_WAIT       80
+            i = 0;
+            while(i < TIME_WAIT){
+                CORETIMER_DelayUs(10);        //つづいての入力信号を待つ時間 10us x 80 = 800usec
+                i++;
+                if (sensorCnt >= NUM_SENSOR){
+                    break;
                 }
             }
+            
+            ICAP1_Disable();
+            ICAP2_Disable();
+            ICAP3_Disable();
+            ICAP4_Disable();
+            ICAP5_Disable();                //入力がなかった時もあるはずなので止める
+            TMR2_Stop();
+            impact_PT4_Off();               //着弾センサ出力オフ->タマモニへいく信号
+            
+            shotCnt++;
+            ringPos++;
+            if (ringPos > LOG_MEM){
+                //ログメモリポインタ制限
+                ringPos = 0;
+            }
+            
+            measStat = measureMain(shotCnt);
+            serialPrintResult(shotCnt, measStat, debuggerMode);
+            //log_data_make(shot_count);    //////////////////////////////////////////////////////////////////////
+            
+            CORETIMER_DelayMs(100);     //1行表示の時まだ処理が残っていて再トリガしてしまうので待つ
+            clearData();
+            ledTimer = 0;
+            
+            LED_BLUE_Clear();
+            
+        }else{       
+            //測定中ではない時
+            
+            //キー入力で表示モードを切り替え
+            if (UART1_ReceiverIsReady()){
+                //シリアル(タマモニ、デバッガー)から受信あり
+                CORETIMER_DelayUs(100);   //受信待ち 115200bps 1データは約100us
+                i = 0;
+                while(UART1_ReceiverIsReady()) {
+                    buf[i] = UART1_ReadByte();
+                    i++;
+                    if (i > BUF_NUM){
+                        break;
+                    }
+                    CORETIMER_DelayUs(100);   //受信待ち 115200bps 1データは約100us
+                }
+                //DEBUGger出力モードの切り替え
+                if ((buf[0] == 'R') && (buf[1] == 0) && (buf[2] == 0) && (buf[3] == 0)){
+                    switch(debuggerMode){
+                        case NONE:
+                            debuggerMode = SINGLE_LINE;
+                            printf(">single line mode\n");
+                            break;
+                        case SINGLE_LINE:
+                            debuggerMode = MEAS_CALC;
+                            printf(">result mode\n");
+                            break;
+                        case MEAS_CALC:
+                            debuggerMode = FULL_DEBUG;
+                            printf(">full debug mode\n");
+                            break;
+                        case FULL_DEBUG:
+                            debuggerMode = CSV_DATA;
+                            printf(">csv output mode\n");
+                            printDataCSVtitle();
+                            break;
+                        case CSV_DATA:
+                            debuggerMode = NONE;
+                            printf(">no output mode\n");
+                            break;
+                        default:
+                            debuggerMode = NONE;    //failsafe
+                            break;
+                    }
+                }
+                UART1_ErrorGet();
+                //バッファクリア
+                for(i = 0; i < BUF_NUM; i++){
+                    buf[i] = 0;
+                }
+            }
+            
+            
+            if (timer1secFlag ){
+                //1秒ごと処理
+                TMR2 = 0;       //1秒ごとタイマクリア。タイマは2秒までカウント。測定中はクリアされない。
+                TMR2_Start();
+                //
+                timer1secFlag = 0;
+                dispTimer++;
+                ledTimer++;
+
+                if ((dispTimer % 8) == 0){     //interval　8sec
+                    LED_BLUE_Set();
+                    ESP32slave_SendBatData();
+                    LED_BLUE_Clear();
+                }else if(POWERSAVING_NORMAL == sleepStat){
+                    BME280_Readout();
+                }
+                
+#define LED_INDICATE_TIME   6
+                if (ledTimer >= LED_INDICATE_TIME){
+                    //正面LEDを消灯
+                    ledLightOff(LED_BLUE | LED_YELLOW | LED_PINK);
+                }
+            }
+
+            if (mainSwFlag){
+                //INT4　電源スイッチの処理
+                mainSwPush();
+                mainSwFlag = 0;
+            }
         }
-        
   
     }
 
@@ -164,33 +286,17 @@ int main ( void )
 
 //***** sub ********************************************************************
 
-
-void deep_sleep(void){
-    //DEEP SLEEP
-    SYSKEY = 0x0;           // Write invalid key to force lock
-    SYSKEY = 0xAA996655;    // Write Key1 to SYSKEY
-    SYSKEY = 0x556699AA;    // Write Key2 to SYSKEY
-    OSCCONbits.SLPEN = 1;   // Set the power-saving mode to a sleep mode
-    SYSKEY = 0x0;           // Write invalid key to force lock
-    asm volatile ("wait");  // Put device in selected power-saving mode
-                            // Code execution will resume here after wake and
-
-    //////////// S L E E P //////////////////////////////////////////////////////////////////////////////////////////////
-    Nop();
-    Nop();
-}
-
-
 //***** callback ********************************************************
-void main_sw_on_callback(EXTERNAL_INT_PIN extIntPin, uintptr_t context)
+void mainSwOn_callback(EXTERNAL_INT_PIN extIntPin, uintptr_t context)
 {
     if (extIntPin == EXTERNAL_INT_4){
-        main_sw_flag = 1;
+        mainSwFlag = 1;
     }
 }
 
-void timer_1sec(uintptr_t context){
-    timer_1sec_flag = 1;
+
+void timer1sec_callback(uintptr_t context){
+    timer1secFlag = 1;
 }
 
 

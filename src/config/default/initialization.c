@@ -183,6 +183,7 @@ void SYS_Initialize ( void* data )
 
 	GPIO_Initialize();
 
+
     ICAP4_Initialize();
 
     ICAP5_Initialize();
@@ -196,12 +197,12 @@ void SYS_Initialize ( void* data )
 	CMP_Initialize();
 
     CLC1_Initialize();
-    CORETIMER_Initialize();
     I2C1_Initialize();
 
-    ADCHS_Initialize();
-
+    CORETIMER_Initialize();
     I2C2_Initialize();
+
+    ADCHS_Initialize();
 
 	UART1_Initialize();
 
