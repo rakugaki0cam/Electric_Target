@@ -20,7 +20,7 @@ bool        BME280_Reset(void);
 bool        BME280_Init(void);
 bool        BME280_Sleep(void);
 bool        BME280_TrimRead(void);
-uint8_t     BME280_Readout(void);
+uint8_t     BME280_ReadoutSM(void);
 //
 int32_t     BME280_CompensateT(int32_t);
 uint32_t    BME280_CompensateP(int32_t);

@@ -9,9 +9,6 @@
 #ifndef _I2C1_USER_H    /* Guard against multiple inclusion */
 #define _I2C1_USER_H
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
 
 typedef enum
 {

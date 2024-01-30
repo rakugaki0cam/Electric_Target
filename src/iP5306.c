@@ -183,8 +183,9 @@ bool ip5306_ReadStatus(uint8_t* data){
             if (sleepStat == POWERSAVING_SLEEP){
                 sleepStat = POWERSAVING_DEEPSLEEP;
                 deepSleep();
-                
                 //------------- DEEP SLEEP -------------------------------------
+            
+                //awake
             }
         }else{
             //充電中
@@ -299,21 +300,22 @@ void espSleep(void){
     sleepStat = POWERSAVING_SLEEP;
     BME280_Sleep();                     //BME280スリープ
     ledLightOff(LED_BLUE | LED_YELLOW | LED_PINK);  //正面LED消灯
+    printf("\n---ESP32 SLEEP-----\n");  //充電完了待ち状態へ節電
     ESP32slave_SleepCommand();          //ESP32スリープ　(電源を切るとI2Cバスに影響が出るため)
     ANALOG_POWER_Clear();               //Analog 3.3V LDOオフ
-    printf("\n---ESP32 SLEEP-----\n");  //充電完了待ち状態へ節電
-    printf("wait for FullCharge \n");
+    printf("wait to FullCharge \n");
     printf("\n");
 }
 
     
 void deepSleep(void){
     //充電完了時のほとんどオフ状態
+    sleepStat = POWERSAVING_DEEPSLEEP;
     LED_BLUE_Clear();
-    RTCC_InterruptDisable(RTCC_INT_ALARM);  //RTCC 割り込み停止
     printf("RTCC Interrupt off\n");
-    ESP_POWER_Clear();                      //ESP32 5V LoadSwitchオフ
+    RTCC_InterruptDisable(RTCC_INT_ALARM);  //RTCC 割り込み停止
     printf("ESP32 off\n");
+    ESP_POWER_Clear();                      //ESP32 5V LoadSwitchオフ
     printf("---DEEP SLEEP-----\n");
     CORETIMER_DelayMs(500);
     POWER_LowPowerModeEnter(LOW_POWER_SLEEP_MODE);

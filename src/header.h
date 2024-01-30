@@ -21,6 +21,7 @@
 #include <stdlib.h>                     // Defines EXIT_FAILURE
 #include "definitions.h"                // SYS function prototypes
 #include <string.h>
+#include <math.h>
 
 //
 #include "BME280v3.h"
@@ -34,14 +35,13 @@
 #include "PCF8574.h"
 
 
-
 //return value
 #define OK      0
 #define ERROR   1
 
 //DEBUG
 //calculation error -> LED Yellow   //DEBUG 計算時の軽微なエラーの時黄色LEDを点ける
-#define DEBUG_LED   //_no
+#define DEBUG_LED_no
 #ifdef DEBUG_LED
     #define LED_CAUTION   LED_YELLOW
 #else
@@ -55,7 +55,6 @@
 
 
 
-
 //Global
 extern uint8_t      sensorCnt;                  //センサ入力順番のカウント
 extern uint16_t     ringPos;                    //ログデータポインタ
@@ -65,8 +64,8 @@ extern debugger_mode_sour_t    debuggerMode;    //DEBUGger表示モード
 //callback
 void mainSwOn_callback(EXTERNAL_INT_PIN, uintptr_t);
 void timer1sec_callback(uintptr_t);
-
-
+//sub
+void debuggerComand(void);
 
 
 #endif //_HEADER_H

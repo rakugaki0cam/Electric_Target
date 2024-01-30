@@ -8,10 +8,6 @@
 #ifndef _ESP32SLAVE_H    /* Guard against multiple inclusion */
 #define _ESP32SLAVE_H
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
-
 
 //Global
 

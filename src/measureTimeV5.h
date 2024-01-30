@@ -11,14 +11,8 @@
 
 // This is a guard condition so that contents of this file are not included
 // more than once.  
-#ifndef MEASURE_H
-#define	MEASURE_H
-
-//??#include <xc.h> // include processor files - each processor file is guarded.  
-#include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <math.h>
+#ifndef MEASURE_TIME_V5_H
+#define	MEASURE_TIME_V5_H
 
 
 //sensor number
@@ -44,62 +38,7 @@
 //GLOBAL
 extern const float      delay_a;        //センサー遅れ時間の計算係数
 extern const float      delay_b;
-
-
-//センサーステータス
-typedef enum {
-    SENSOR_STATUS_OK,       //OK
-    SENSOR_STATUS_INVALID,  //データ無効     
-    SENSOR_STATUS_ERROR,    //エラー  
-    SENSOR_STAT_SOURCE_NUM
-} sensor_stat_sor_t;
-
-
-//センサ情報と測定値
-typedef struct {
-    uint8_t             sensor_num;         //センサ番号
-    uint8_t             input_order;        //センサデータ入力順位 0~5
-    float               sensor_x_mm;        //センサ座標
-    float               sensor_y_mm;
-    float               sensor_z_mm;
-    uint32_t            timer_cnt;          //タイマ測定値
-    uint32_t            delay_cnt;          //タイマ差値
-    float               delay_time_usec;    //到達時間差測定値
-    float               comp_delay_usec;    //コンパレータ応答遅れ時間(推定)
-    float               d_time_corr_usec;   //到達時間差補正後
-    float               distance_mm;        //距離差
-    sensor_stat_sor_t   status;             //状態
-} sensor_data_t;
 extern sensor_data_t    sensor5Measure[];  //センサーデータ、測定値
-
-
-//測定ステータス
-typedef enum {
-    MEASURE_STATUS_OK,
-    MEASURE_STATUS_NOT_ENOUGH,       
-    MEASURE_STATUS_ERROR,
-    MEASURE_STATUS_SOURCE_NUM
-} meas_stat_sor_t;
-
-//グループ毎の分散の計算
-typedef struct {
-    uint16_t        pattern;            //センサ選択パターン 十進　各桁がセンサ番号
-    uint8_t         sample_n;           //平均サンプル数
-    float           average_pos_x_mm;
-    float           average_pos_y_mm;
-    float           average_radius0_mm;
-    float           dist1_mm2;          //偏差 距離の2乗 dx^2+dy^2
-    float           dist2_mm2;
-    float           dist3_mm2;
-    float           dist4_mm2;
-    float           variance;           //偏差の総和の平均　=　分散(σ^2値)
-    uint8_t         order;              //ばらつきの順位
-    calc_stat_sor_t status;
-} result_ave_t;
-
-extern result_ave_t    groupVari[];
-
-
 
 
 //
@@ -111,10 +50,8 @@ uint8_t checkInputOrder(void);
 uint8_t assignMeasureData(void);
 //
 void    clearData(void);
-
 //time
 float   dist_delay_mm(float);
-
 float   v_air_mps(void);
 float   delay_time_usec(uint32_t);
 float   delay_comparator_usec(float);
@@ -128,4 +65,4 @@ void    detectSensor4(uintptr_t);
 void    detectSensor5(uintptr_t);
 
 
-#endif	//MEASURE_H
+#endif	//MEASURE_TIME_V5_H

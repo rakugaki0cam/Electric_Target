@@ -20,10 +20,10 @@ void serialPrintResult(uint16_t shotCount, uint8_t meaStat, uint8_t mode){
 
     dataSendToESP32();  //着弾表示を早くする
     
-    CORETIMER_DelayMs(100); //RS485へ送信の前に間を開ける。タマモニからデバッガへprintfしているかもしれないため
+    //CORETIMER_DelayMs(100); //RS485へ送信の前に間を開ける。タマモニからデバッガへprintfしているかもしれないため/////////////////////////
     dataSendToTAMAMONI();   //LAN
     
-    CORETIMER_DelayMs(30);  //データ送信の間をつくる
+    //CORETIMER_DelayMs(30);  //データ送信の間をつくる/////////////////////////////////////////////////////////////////////////
     switch(mode){
         case NONE:
             break;
@@ -53,9 +53,8 @@ void dataSendToTAMAMONI(void){
 
 
 void dataSendToESP32(void){
-    //ESP32へ座標データ他をI2Cで送信
-    //target LCD
-    //ESP32はこのi2cデータを受けとり、ターゲット表示とデータ変換してタマモニへWiFi送信をする。
+    //target LCD(ESP32)へ座標データ他をI2Cで送信
+    //ESP32はこのi2cデータを受けとり、ターゲット表示とデータ変換してタマモニへWiFi送信(ESP-NOW)をする。
     
     //float 4バイト変数を1バイトごとの配列にあてはめて送る = ポインタ渡し
 #define FLOAT_BYTES 4   //floatは4バイト  
@@ -69,9 +68,9 @@ void dataSendToESP32(void){
 
 
 
-//DEBUGger
+//DEBUGger  serial debug
 
-void printSingleLine(uint16_t shotCount, uint8_t measStat){
+void printSingleLine(uint16_t shotCount, meas_stat_sor_t measStat){
 //void single_line(uint16_t shot_count, meas_stat_sor_t meas_stat){ /////////////////なぜかここでmeas_stat_sor_tが届いていない????
     //座標のみ　1行表示
     calc_stat_sor_t      calc_stat;
@@ -89,7 +88,7 @@ void printSingleLine(uint16_t shotCount, uint8_t measStat){
 }
 
 
-void printMeasCalc(uint16_t shotCount, uint8_t measStat){
+void printMeasCalc(uint16_t shotCount, meas_stat_sor_t measStat){
     //デバッグ用フル表示
     sensor_stat_sor_t   sens_stat;
     calc_stat_sor_t     calc_stat;
@@ -177,7 +176,7 @@ void printMeasCalc(uint16_t shotCount, uint8_t measStat){
 }
 
 
-void printFullDebug(uint16_t shotCount, uint8_t measStat){
+void printFullDebug(uint16_t shotCount, meas_stat_sor_t measStat){
     //デバッグ用フル表示
     
     uint8_t             i;
@@ -212,14 +211,14 @@ void printFullDebug(uint16_t shotCount, uint8_t measStat){
     
     printf("5Group - Variance of 4sensors\n");
     for (i = 0; i < NUM_GROUP; i++){
-        printf("%2d - (calc%04X)  ", (i + 1), groupVari[i].pattern);
-        printf("ave[ n=%1d - x:%8.3f  y:%8.3f  r0:%8.3f ]  ", groupVari[i].sample_n, groupVari[i].average_pos_x_mm, groupVari[i].average_pos_y_mm, groupVari[i].average_radius0_mm);
-        printf("dev[ d1:%7.3f  d2:%7.3f  d3:%7.3f  d4:%7.3f ]   ", groupVari[i].dist1_mm2, groupVari[i].dist2_mm2, groupVari[i].dist3_mm2, groupVari[i].dist4_mm2);
-        printf("variance:%8.4f [%d]  err:%2d\n", groupVari[i].variance, (groupVari[i].order + 1), groupVari[i].status);
+        printf("%2d - (calc%04X)  ", (i + 1), vari5Groupe[i].pattern);
+        printf("ave[ n=%1d - x:%8.3f  y:%8.3f  r0:%8.3f ]  ", vari5Groupe[i].sample_n, vari5Groupe[i].average_pos_x_mm, vari5Groupe[i].average_pos_y_mm, vari5Groupe[i].average_radius0_mm);
+        printf("dev[ d1:%7.3f  d2:%7.3f  d3:%7.3f  d4:%7.3f ]   ", vari5Groupe[i].dist1_mm2, vari5Groupe[i].dist2_mm2, vari5Groupe[i].dist3_mm2, vari5Groupe[i].dist4_mm2);
+        printf("variance:%8.4f [%d]  err:%2d\n", vari5Groupe[i].variance, (vari5Groupe[i].order + 1), vari5Groupe[i].status);
         
-        if (groupVari[i].order == 0){
+        if (vari5Groupe[i].order == 0){
             selGroup = i;
-            stdDev = sqrt(groupVari[i].variance);
+            stdDev = sqrt(vari5Groupe[i].variance);
         }
     }
     printf("--- Result: [ Group: %1d (exclude sensor%1d): stdev: %6.3fmm ] -------------------------------\n", (selGroup + 1), (selGroup + 1), stdDev);
@@ -284,6 +283,7 @@ void    printDataCSV(uint16_t shotCount){
     printf(",%5.1f", air_temp_degree_c);
     
     printf("\n");
+    
 }
 
 

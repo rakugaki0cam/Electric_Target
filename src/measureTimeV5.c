@@ -21,10 +21,8 @@
 #define COMP_DELAY_TIME_OFF                 //計算の検算中はコンパレータディレイタイムの合算は無し
 
 //GLOBAL
-const float   delay_a = (5.0 / 300);        //センサー遅れ時間の計算係数 msec / mm
-const float   delay_b = 10;                 //msec
-
-
+const float   delay_a = (5.0 / 300);        //コンパレータオンの遅れ時間の計算係数 usec / mm
+const float   delay_b = 10;                 //usec
 sensor_data_t   sensor5Measure[NUM_SENSOR]= {
     {SENSOR1, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},  //左下
     {SENSOR2, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},  //右下
@@ -63,23 +61,20 @@ void    correctSensorOffset(float center_dx, float center_dy){
     //センサーの物理位置のズレ補正
     float   sensor1_offset_x = 0;
     float   sensor1_offset_y = 0;
-    float   sensor1_offset_z = 0;
 
     float   sensor2_offset_x = 0;
     float   sensor2_offset_y = 0;
-    float   sensor2_offset_z = 0;
 
     float   sensor3_offset_x = 0;
     float   sensor3_offset_y = 0;
-    float   sensor3_offset_z = 0;
 
     float   sensor4_offset_x = 0;
     float   sensor4_offset_y = 0;
-    float   sensor4_offset_z = 0;
     
-    float   sensor5_offset_x = 0;
+    float   sensor5_offset_x = 0;//ここをいじると一直線にならないので計算式が三角法のままになる。
     float   sensor5_offset_y = 0;
-    float   sensor5_offset_z = 0;
+    
+    float   sensor_offset_z = 0;    //z位置は同一平面状として計算式を作っているので、センサーごとの設定は不可。
 
     //x
     sensor5Measure[0].sensor_x_mm = -SENSOR_HORIZONTAL_SPACING + sensor1_offset_x + center_dx;
@@ -94,14 +89,13 @@ void    correctSensorOffset(float center_dx, float center_dy){
     sensor5Measure[3].sensor_y_mm =  SENSOR_VERTICAL_SPACING + sensor4_offset_y + center_dy;
     sensor5Measure[4].sensor_y_mm =  SENSOR_CENTER_SPACING   + sensor5_offset_y + center_dy;
     //z
-    sensor5Measure[0].sensor_z_mm =  SENSOR_DEPTH_OFFSET + sensor1_offset_z;
-    sensor5Measure[1].sensor_z_mm =  SENSOR_DEPTH_OFFSET + sensor2_offset_z;
-    sensor5Measure[2].sensor_z_mm =  SENSOR_DEPTH_OFFSET + sensor3_offset_z;
-    sensor5Measure[3].sensor_z_mm =  SENSOR_DEPTH_OFFSET + sensor4_offset_z;
-    sensor5Measure[4].sensor_z_mm =  SENSOR_DEPTH_OFFSET + sensor5_offset_z;
+    sensor5Measure[0].sensor_z_mm =  SENSOR_DEPTH_OFFSET + sensor_offset_z;
+    sensor5Measure[1].sensor_z_mm =  SENSOR_DEPTH_OFFSET + sensor_offset_z;
+    sensor5Measure[2].sensor_z_mm =  SENSOR_DEPTH_OFFSET + sensor_offset_z;
+    sensor5Measure[3].sensor_z_mm =  SENSOR_DEPTH_OFFSET + sensor_offset_z;
+    sensor5Measure[4].sensor_z_mm =  SENSOR_DEPTH_OFFSET + sensor_offset_z;
 
 }
-
 
 
 

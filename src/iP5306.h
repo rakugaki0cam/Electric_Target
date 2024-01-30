@@ -8,16 +8,14 @@
 #ifndef _IP5306_H    /* Guard against multiple inclusion */
 #define _IP5306_H
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
 
 //Global
 typedef enum
 {
-    POWERSAVING_NORMAL = 0,
-    POWERSAVING_SLEEP  = 1,
-    POWERSAVING_DEEPSLEEP = 2,
+    POWERSAVING_NORMAL,
+    POWERSAVING_SLEEP,
+    POWERSAVING_DEEPSLEEP,
+    POWERSAVING_NUM        
 } power_saving_mask_t;
 
 extern power_saving_mask_t sleepStat;

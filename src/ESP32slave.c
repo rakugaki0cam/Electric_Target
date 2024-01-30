@@ -2,7 +2,7 @@
  * File:   ESP32slave.c
  * Comments: PIC32MK-MCJ Harmony
  * 
- * ESP32S3 Yellow Board LCD　　I2C
+ * ESP32S3 Yellow Board LCD　　I2C slave
  * 
  * 3.3V I2C
  * 
@@ -14,18 +14,19 @@
 #include "header.h"
 #include "ESP32slave.h"
 
-#define     ESP_SLAVE_ID        0x25    //I2C ID ESP32S3 Yellow Board LCD&WiFi
-//
-#define     REG_ID_CHECK        0x01    //ID確認　返答"ESP"
-#define     REG_TARGET_CLEAR    0x20    //ターゲットクリアコマンド
-#define     REG_TARGET_RESET    0x21    //ターゲットリセットコマンド
-#define     REG_TARGET_DEFAULT  0x22    //ターゲットデフォルトセットコマンド
-#define     REG_DATA_IMPACT     0x30    //着弾データを送る
-#define     REG_DATA_TEMP       0x60    //温度データを送る
-#define     REG_DATA_BAT        0x70    //バッテリーデータを送る
-#define     REG_TARGET_SLEEP    0x90    //ターゲットスリープコマンド
-#define     DATA_SLEEP_KEY      0x99    //スリープのkey
-
+#define ESP_SLAVE_ID      0x25  //I2C ID ESP32S3 Yellow Board LCD&WiFi
+//register address
+typedef enum  {
+    REG_ID_CHECK        = 0x01, //ID確認　返答"ESP"
+    REG_TARGET_CLEAR    = 0x20, //ターゲットクリアコマンド
+    REG_TARGET_RESET    = 0x21, //ターゲットリセットコマンド
+    REG_TARGET_DEFAULT  = 0x22, //ターゲットデフォルトセットコマンド
+    REG_DATA_IMPACT     = 0x30, //着弾データを送る
+    REG_DATA_TEMP       = 0x60, //温度データを送る
+    REG_DATA_BAT        = 0x70, //バッテリーデータを送る
+    REG_TARGET_SLEEP    = 0x90, //ターゲットスリープコマンド
+    DATA_SLEEP_KEY      = 0x99, //スリープのkey
+} esp_register_t;
 
 
 bool ESP32slave_Init(void){
@@ -88,7 +89,6 @@ bool ESP32slave_SendBatData(void) {
 bool ESP32slave_SendTempData(uint32_t temp){
     //気温データをESP32へ送る
     //temp:温度データ
-    
     uint8_t     dataToEsp[2];
 
     dataToEsp[0] = (uint8_t)(temp >> 8) & 0xff;
@@ -115,20 +115,20 @@ bool ESP32slave_SendImpactData(uint8_t* dataToEsp, uint8_t len){
     return OK;
 }
     
-/*
-bool ESP32slave_SendImpactData(float* impactData){
+/*  ポインタ変数を立てなくてもできるので、このやり方は無駄だけどポインタを理解するのには良いかも。
+bool ESP32slave_SendImpactData(float* impactData, uint8_t len){
     //着弾データを送信
     //float 4バイト変数を1バイトごとの配列に変換
-    uint8_t     dataToEsp[12];
+    uint8_t     dataToEsp[len];
     uint8_t*    pointerByte;    //ポインタ変数 - uint8_tなので1バイトずつ進む
     uint8_t     i;
     
     pointerByte = (uint8_t*)&impactData[0];
-    for (i = 0; i < 12; i++){
+    for (i = 0; i < len; i++){
         dataToEsp[i] = pointerByte[i];
     }
 
-    if (i2c1_WriteDataBlock(ESP_SLAVE_ID, REG_DATA_IMPACT, &dataToEsp[0], 12)){
+    if (i2c1_WriteDataBlock(ESP_SLAVE_ID, REG_DATA_IMPACT, &dataToEsp[0], len)){
         printf("ESPslave error!\n");
         return ERROR;
     }

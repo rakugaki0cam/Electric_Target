@@ -10,12 +10,8 @@
 
 // This is a guard condition so that contents of this file are not included
 // more than once.  
-#ifndef DATADISPSENDV5_H
-#define	DATADISPSENDV5_H
-
-#include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
+#ifndef DATA_DISPSEND_V5_H
+#define	DATA_DISPSEND_V5_H
 
 
 //âÊñ ï\é¶ÉÇÅ[Éh
@@ -29,19 +25,18 @@ typedef enum {
 } debugger_mode_sour_t;
 
 
-
     
 void    serialPrintResult(uint16_t, uint8_t, uint8_t);
 void    dataSendToTAMAMONI(void);
 void    dataSendToESP32(void);
 
 //debugger
-void    printSingleLine(uint16_t, uint8_t);
-void    printMeasCalc(uint16_t, uint8_t);
-void    printFullDebug(uint16_t, uint8_t);
+void    printSingleLine(uint16_t, meas_stat_sor_t);
+void    printMeasCalc(uint16_t, meas_stat_sor_t);
+void    printFullDebug(uint16_t, meas_stat_sor_t);
 void    printDataCSVtitle(void);
 void    printDataCSV(uint16_t);
 
 
 
-#endif	//DATADISPSENDV5_H
+#endif	//DATA_DISPSEND_V5_H

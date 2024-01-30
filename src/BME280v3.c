@@ -237,7 +237,7 @@ bool BME280_TrimRead(void){
 }
 
 
-uint8_t BME280_Readout(void){
+uint8_t BME280_ReadoutSM(void){
     //読み出しと表示
     //ret: status
     
@@ -347,7 +347,7 @@ int32_t BME280_CompensateT(int32_t adc_T){
     T = (t_fine * 5 + 128) >> 8;
     return T;
 
-/* 
+/*  倍精度浮動小数点計算
     double var1, var2, T; 
     var1 = (((double)adc_T) / 16384.0 - ((double)dig_T1) / 1024.0) * ((double)dig_T2);
     var2 = ((((double)adc_T) / 131072.0 - ((double)dig_T1) / 8192.0) * (((double)adc_T) / 131072.0 - ((double) dig_T1) / 8192.0)) * ((double)dig_T3);

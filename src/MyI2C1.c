@@ -112,6 +112,8 @@ bool    i2c1_Read1byteRegister(uint8_t i2cId, uint8_t reg, uint8_t* rxData){
     uint8_t txData[1];
 
     txData[0] = reg;
+    rxData[0] = 0;          ////////////////////////////////////////////////////////////clear
+    
     if (i2c1_BusCheck()){
         printf("I2C bus error!\n");
         return ERROR;
@@ -144,8 +146,13 @@ bool    i2c1_ReadDataBlock(uint8_t i2cId, uint8_t reg, uint8_t* rxData, uint8_t 
 #define DEBUGI2C4_no
     
     uint8_t txData[1];
+    uint8_t i;
     
     txData[0] = reg;
+    for(i = 0; i < len; i++){/////////////////////////////////////////////////////////////clear
+        rxData[i] = 0;
+    }
+    
     if (i2c1_BusCheck()){
         printf("I2C bus error!\n");
         return ERROR;
@@ -161,9 +168,8 @@ bool    i2c1_ReadDataBlock(uint8_t i2cId, uint8_t reg, uint8_t* rxData, uint8_t 
         return ERROR;
     }
 #ifdef DEBUGI2C4
-    uint8_t i;
     printf("I2C 0x%02X (0x%02X)-", i2cId, txData[0]);
-    for (i = 0;i < len; i++){
+    for (i = 0; i < len; i++){
         printf(" %02x", rxData[i]);
     }
     printf("\n");
@@ -176,8 +182,9 @@ bool    i2c1_ReadDataBlock(uint8_t i2cId, uint8_t reg, uint8_t* rxData, uint8_t 
 //レジスタは一つのみなのでレジスタアドレスがない
 
 bool    i2c1_WriteRegister(uint8_t i2cId, uint8_t portReg){
+    //レジスタ書き込みなし
     //port Write
-#define DEBUGPCF8574_no
+#define DEBUGPCF8574_1_no
     
     uint8_t txData[1];
     
@@ -197,19 +204,22 @@ bool    i2c1_WriteRegister(uint8_t i2cId, uint8_t portReg){
         //printf("error!\n");
         return ERROR;
     }
-#ifdef DEBUGPCF8574
-    printf("I2C 0x%02X - %02X\n", PCF8574_ID, txData[0]);
+#ifdef DEBUGPCF8574_1
+    printf("I2C 0x%02X - %02X\n", i2cId, txData[0]);
 #endif
     return OK;
  
 }
 
 
+//レジスタ書き込みなし
 bool    i2ci_ReadRegister(uint8_t i2cId, uint8_t* rxData){
+    //レジスタ書き込みなし
     //port Read
     //ret   rxData
-#define DEBUGPCF8574A_no
+#define DEBUGPCF8574A_2_no
             
+    rxData[0] = 0;                  //////////////////////////////////////////////clear
     if (i2c1_BusCheck()){
         printf("I2C bus error!\n");
         return ERROR;
@@ -224,8 +234,8 @@ bool    i2ci_ReadRegister(uint8_t i2cId, uint8_t* rxData){
         //printf("error!\n");
         return ERROR;
     }
-#ifdef DEBUGPCF8574A
-    printf("I2C 0x%02X - %02X\n", PCF8574_ID, rxData[0]);
+#ifdef DEBUGPCF8574A_2
+    printf("I2C 0x%02X - %02X\n", i2cId, rxData[0]);
 #endif
     return OK;
  
@@ -247,6 +257,11 @@ bool    i2c1_ESP32ReadDataBlock(uint8_t i2cId, uint8_t reg, uint8_t* rxData, uin
 #define DEBUGI2C5_no
     
     uint8_t txData[1];
+    uint8_t i;
+    
+    for(i = 0; i < len; i++){               //////////////////////////////////////////clear
+        rxData[i] = 0;
+    }
     
     txData[0] = reg;
     if (i2c1_BusCheck()){
@@ -262,7 +277,7 @@ bool    i2c1_ESP32ReadDataBlock(uint8_t i2cId, uint8_t reg, uint8_t* rxData, uin
         //printf("error!\n");
         return ERROR;
     }
-    //一度終了
+    //一度終了。間にストップコンディションが入る。
     if (i2c1_BusCheck()){
         printf("I2C bus error!\n");
         return ERROR;
@@ -278,7 +293,6 @@ bool    i2c1_ESP32ReadDataBlock(uint8_t i2cId, uint8_t reg, uint8_t* rxData, uin
         return ERROR;
     }
 #ifdef DEBUGI2C5
-    uint8_t i;
     printf("I2C 0x%02X (0x%02X)-", i2cId, txData[0]);
     for (i = 0;i < len; i++){
         printf(" %02x", rxData[i]);
@@ -293,17 +307,14 @@ bool    i2c1_ESP32ReadDataBlock(uint8_t i2cId, uint8_t reg, uint8_t* rxData, uin
 //
 bool    i2c1_BusCheck(void){
     //bus idle check
-    
-#define COUNT2   100
-    uint16_t i = 0;
+    uint16_t    cnt = 60000;
     
     while(I2C1_IsBusy( )){
         //wait for the current transfer to complete
-        i++;
-        if (i > COUNT2){
-            //bus error
-            //printf("bus error\n");
-            I2C1_TransferAbort();       //たぶん必要
+        cnt--;
+        if (cnt <= 0){
+            //bus busy
+            printf("bus busy\n");
             return ERROR;
         }
     }
@@ -317,20 +328,19 @@ bool    i2c1_Wait(void){
     //返り値 0:OK, 1:error or time over
 #define DEBUGI2C6_no
     
-#define TIMEOUT   20000////////////////////////////////
-    uint16_t    cnt = 0;
+    uint16_t    cnt = 40000;
 
     while(!i2c1Complete){
-        cnt++;
-        if (cnt > TIMEOUT){
+        cnt--;
+        if (cnt <= 0){
             printf("I2C timeout!");
             return ERROR;
         }
 #ifdef DEBUGI2C6
-       
         printf(".");
 #endif
     }
+    //printf("I2C wait cnt:%d", cnt);
     return i2c1_Error(I2C1ERR_CHECK);
 }
 
