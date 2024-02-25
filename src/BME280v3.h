@@ -8,9 +8,9 @@
 #ifndef BME280V3_H
 #define	BME280V3_H
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
+////#include <stdint.h>
+//#include <stdbool.h>
+//#include <stddef.h>
 
 //Global
 extern float    air_temp_degree_c;      //‹C‰·

@@ -15,9 +15,9 @@
 #ifndef LOG_H
 #define	LOG_H
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
+//#include <stdint.h>
+//#include <stdbool.h>
+//#include <stddef.h>
 
 
 #define LOG_MEM 200             //ƒƒOƒƒ‚ƒŠŠm•Û

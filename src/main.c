@@ -38,6 +38,8 @@
  * 2024.01.21   v.0.40  センサ3個が一直線に並んでいる時(e=0)の計算式を追加。
  * 2024.01.27   v.0.41  センサ一直線の時x0が2つ求まるので、判定式を追加。センサ1の球r#1+r0の長さがほぼ(x0,y0)と(x#1,y#1)の距離に等しい、ことから差が小さい方を選択する。
  * 2024.01.30   v.0.50  整理整頓
+ * 2024.02.25   v.0.51  有線部分の作成:
+ *                      ブランチv051-wired-connect
  * 
  * 
  * 
@@ -53,7 +55,7 @@ uint8_t     sensorCnt;              //センサ入力順番のカウント  ////////////////
 debugger_mode_sour_t    debuggerMode = FULL_DEBUG;
 
 //local
-const uint8_t fw_ver[] = "0.50";    //firmware version
+const uint8_t fw_ver[] = "0.51";    //firmware version
 bool        mainSwFlag = 0;         //メインスイッチ割込
 bool        timer1secFlag = 0;      //RTCC 1秒割込
 
