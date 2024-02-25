@@ -22,7 +22,9 @@ bool    ESP32slave_SleepCommand(void);
 bool    ESP32slave_ClearCommand(void);
 bool    ESP32slave_ResetCommand(void);
 bool    ESP32slave_DefaultSetCommand(void); 
-
+bool    ESP32slave_OffSetCommand(float);
+bool    ESP32slave_AimpointCommand(float);
+bool    ESP32slave_BrightnessCommand(float);
 
 
 

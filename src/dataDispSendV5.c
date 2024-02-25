@@ -48,6 +48,8 @@ void serialPrintResult(uint16_t shotCount, uint8_t meaStat, uint8_t mode){
 
 void dataSendToTAMAMONI(void){
     //タマモニへ座標データ他を有線送信
+    //オフセットを加算しないといけない
+    printf("\n[TARGET#2->]\n");//////////////////
     printf("BINX0Y0dT %8.3f %8.3f %8.4f END ,", calcResult.impact_pos_x_mm, calcResult.impact_pos_y_mm, calcResult.delay_time0_msec);
 }
 

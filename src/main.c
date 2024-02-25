@@ -41,7 +41,8 @@
  * 2024.01.30   v.0.50  整理整頓
  * 2024.02.25   v.0.51  有線部分の作成:
  *                      ブランチv051-wired-connect
- * 
+ * 2024.02.25   v.0.52  有線接続の時、ターゲットオフセット分をタマモニへのデータに加算しなくてはいけない。(オフセットデータを持っていない)
+ *                      有線接続の時、タマモニからのターゲットコマンド(UART)を解釈してESPへI2Cで送る
  * 
  * 
  */
@@ -52,14 +53,19 @@
 //Global
 uint16_t    ringPos = 0;            //ログデータポインタ
 uint8_t     sensorCnt;              //センサ入力順番のカウント  ////////////////////////
-//debugger_mode_sour_t  debuggerMode = NONE;
-debugger_mode_sour_t    debuggerMode = FULL_DEBUG;
+float       targetY0Offset = 0;     //ターゲットYオフセット
+
+//debug
+debugger_mode_sour_t  debuggerMode = NONE;
+//debugger_mode_sour_t    debuggerMode = FULL_DEBUG;
+
 
 //local
-const uint8_t fw_ver[] = "0.51";    //firmware version
+const uint8_t fw_ver[] = "0.52";    //firmware version
 bool        mainSwFlag = 0;         //メインスイッチ割込
 bool        timer1secFlag = 0;      //RTCC 1秒割込
-
+uint32_t    uartBaudrate = 9600;    //RS485ボーレート:通常　(タマモニ有線可)
+//uint32_t    uartBaudrate = 115200;  //              :たくさんデバッグする時(タマモニ有線不可)
 
 
 //--- callback ----------------------------------------------------------
@@ -85,6 +91,8 @@ int main ( void ){
     uint16_t        shotCnt = 0;     //ショットカウントは1から。0は入力無し
     uint8_t         dispTimer = 0;
     uint8_t         ledTimer = 0;       //ステータスLEDを消すまでのタイマー
+    //UART_SERIAL_SETUP rs485set;
+
     
     //Initialize all modules
     SYS_Initialize ( NULL );
@@ -92,6 +100,13 @@ int main ( void ){
     //power on
     ESP_POWER_Set();        //ESP32 5V LoadSwitch
     ANALOG_POWER_Set();     //Analog 3.3V LDO
+    
+    //UART
+    //rs485set.baudRate = uartBaudrate;
+    //rs485set.parity = UART_PARITY_NONE;
+    //rs485set.dataWidth = UART_DATA_8_BIT;
+    //rs485set.stopBits = UART_STOP_1_BIT;
+    //UART1_SerialSetup(&rs485set, CPU_CLOCK_FREQUENCY >> 1);  //PBCLK2:60MHz
     
     //start up
     CORETIMER_DelayMs(1000);
@@ -139,15 +154,6 @@ int main ( void ){
     ESP32slave_Init();  //LCD&WiFi
     PCF8574_Init();     //IOexpander LED
     
-    //UART
-    UART_SERIAL_SETUP rs485set;
-    rs485set.baudRate = 9600;
-    //rs485set.baudRate = 115200;
-    rs485set.parity = UART_PARITY_NONE;
-    rs485set.dataWidth = UART_DATA_8_BIT;
-    rs485set.stopBits = UART_STOP_1_BIT;
-    UART1_SerialSetup(rs485set, CPU_CLOCK_FREQUENCY >> 1);  //PBCLK2:60MHz
-    
     //comparator DAC
     uint16_t    compVth = 100;//mV  CDAconverter/////////////////////////////////////////
     uint16_t    val_12bit;
@@ -169,6 +175,10 @@ int main ( void ){
     printf("\n");
     //hardware init complete
     
+    //uart buffer clear
+    while(UART1_ReceiverIsReady()) {
+        UART1_ReadByte();
+    }
     
     //
     measureInit();
@@ -270,7 +280,7 @@ int main ( void ){
 
 void debuggerComand(void){
     //キー入力で表示モードを切り替え
-#define     BUF_NUM         5   //UARTデータ読込バッファ数
+#define     BUF_NUM     250     //UARTデータ読込バッファ数
     uint8_t buf[BUF_NUM];       //UARTデータ読込バッファ
     uint8_t i;
     
@@ -278,22 +288,32 @@ void debuggerComand(void){
         return;
     }
     
-    //buf clear
-    for(i = 0; i < BUF_NUM; i++){
+    //シリアル(タマモニ、デバッガー)から受信あり
+    for(i = 0; i < 5; i++){
         buf[i] = 0;
     }
-    
-    //シリアル(タマモニ、デバッガー)から受信あり
     i = 0;
     while(UART1_ReceiverIsReady()) {
         buf[i] = UART1_ReadByte();
+        if ((buf[i] == ',') || (buf[i] == 0)){ //end mark
+            i++;
+            buf[i] = 0;
+            printf("buf='%s'\n", buf);
+            CORETIMER_DelayMs(50);
+            break;
+        }
         i++;
         if (i > BUF_NUM){
             printf("uart command too long!\n");
-            break;
+            //buffer clear
+            return;
         }
-        CORETIMER_DelayUs(90);   //受信待ち 115200bps 1バイトデータは約78us
+        CORETIMER_DelayUs(90);          //受信待ち 115200bps 1バイトデータは約78us
+        if (uartBaudrate != 115200){
+            CORETIMER_DelayUs(1000);    //受信待ち 9600bps 1バイトデータは約938us
+        }
     }
+    
     
     //DEBUGger出力モードの切り替え
     if (((buf[0] == 'R') | (buf[0] == 'r')) && ((buf[1] + buf[2] + buf[3] + buf[4]) == 0)){
@@ -328,12 +348,84 @@ void debuggerComand(void){
         printf(">target clear\n");
         ESP32slave_ClearCommand();
     }else{
-        printf(">invalid command!\n");
+        //コマンド解析
+        
+        
+        tamamoniCommandCheck(buf);
+
+        
+        
+        
+        
+        
+        
+        //printf(">invalid command!\n");
     }
     
+    
     UART1_ErrorGet();
-   
+    //buffer clear
+    for(i = 0; i < BUF_NUM; i++){
+        buf[i] = 0;
+    }
+    
 }
+
+
+// Tamamoni TARGET Command ------------------------------------------------------------------------------------------
+void tamamoniCommandCheck(uint8_t* tmp_str) {
+    //タマモニからのコマンドを確認し実行
+    char command[10] = { 0 };  //9文字まで
+    const char clear[] = "CLEAR";
+    const char reset[] = "RESET";
+    const char defaultSet[] = "DEFAULT";
+    const char offset[] = "OFFSET";
+    const char aimpoint[] = "AIMPOINT";
+    const char brightness[] = "BRIGHT";
+    float val = 0;
+    uint8_t   num;
+
+    num = sscanf((char*)tmp_str, "TARGET_%s %f END", command, &val);   //valのところの数字は無くても正常に動くみたい
+    if (num == 0) {
+        //型が合わなかったとき
+        printf("'%s' is not command!\n", tmp_str);
+        return;
+    }                                                                     
+    //コマンド
+    printf("Detect tamamoni command(%d) :%s   %f --- ", num, command, val);
+    if (strcmp(clear, command) == 0) {
+        printf("> target clear\n");
+        ESP32slave_ClearCommand();
+
+    } else if (strcmp(reset, command) == 0) {
+        printf("** RESET ESP32 in 3 second **\n");
+        //LCD
+        CORETIMER_DelayMs(3000);
+        ESP32slave_ResetCommand();  ////////////////////// RESET
+
+    } else if (strcmp(defaultSet, command) == 0) {
+        printf("> target default set \n");
+        ESP32slave_DefaultSetCommand();
+
+    } else if (strcmp(offset, command) == 0) {
+        printf("> target Y offset %5.1f \n", val);
+        ESP32slave_OffSetCommand(val);
+
+    } else if (strcmp(aimpoint, command) == 0) {
+        printf("> aimpoint set %5.1f \n", val);
+        ESP32slave_AimpointCommand(val);
+
+    } else if (strcmp(brightness, command) == 0) {
+        printf("> LCD backlight brightness set %5.1f \n", val);
+        ESP32slave_BrightnessCommand(val);
+    } else {
+        //
+        printf(" invalid command!\n");
+    }
+
+}
+
+
 
 
 /*******************************************************************************

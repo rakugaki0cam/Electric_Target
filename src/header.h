@@ -58,9 +58,28 @@
 
 
 //Global
-extern uint8_t      sensorCnt;                  //センサ入力順番のカウント
-extern uint16_t     ringPos;                    //ログデータポインタ
+extern uint8_t      sensorCnt;              //センサ入力順番のカウント
+extern uint16_t     ringPos;                //ログデータポインタ
+extern float        targetY0Offset;         //ターゲットYオフセット
+
+
 extern debugger_mode_sour_t    debuggerMode;    //DEBUGger表示モード
+
+//DEBUGger printf
+//計算過程のデバッグ表示
+#define DEBUG_MEAS_no       //デバッグprintf表示(エラー系)   
+#define DEBUG_APO_no        //座標検算時のデバッグprintf表示(検算用)
+#define DEBUG_APO2_no       //座標検算時のデバッグprintf表示(エラー系)
+//ESP32スレーブへの送信関連デバッグ表示
+#define DEBUG_ESP_SLAVE_0_no    //Debug用printf(エラー関連)
+#define DEBUG_ESP_SLAVE_2_no    //Debug用printf(バッテリ電圧)
+#define DEBUG_ESP_SLAVE_3_no    //Debug用printf(送信データ)
+
+
+
+
+
+
 
 
 //callback
@@ -68,6 +87,7 @@ void mainSwOn_callback(EXTERNAL_INT_PIN, uintptr_t);
 void timer1sec_callback(uintptr_t);
 //sub
 void debuggerComand(void);
+void tamamoniCommandCheck(uint8_t*); 
 
 
 #endif //_HEADER_H

@@ -26,8 +26,9 @@
 #include "header.h"
 #include "computeEpicenterV5.h"
 
-//DEBUG    
-#define DEBUG_APO_no        //座標検算時のデバッグprintf表示
+//DEBUG (global)
+//#define DEBUG_APO_no        //座標検算時のデバッグprintf表示(検算用)
+//#define DEBUG_APO2_no       //座標検算時のデバッグprintf表示(エラー系)
 
 
 //GLOBAL
@@ -162,8 +163,9 @@ calc_stat_sor_t computeEpicenter(void){
                 //計算値が不可だった場合平均計算に含めない
                 calcStat = CALC_STATUS_AVERAGE_ERR;
                 ledLightOn(LED_CAUTION);
+#ifdef  DEBUG_APO_2
                 printf("group%1d.d%1d: ave sample error!\n", (grNum + 1), (i + 1));
-
+#endif
             }
         } // for-i loop 
         
@@ -175,8 +177,9 @@ calc_stat_sor_t computeEpicenter(void){
             vari5Groupe[grNum].average_radius0_mm = 999.99;
             calcStat = CALC_STATUS_AVERAGE_ERR;
             ledLightOn(LED_CAUTION);
+#ifdef  DEBUG_APO_2            
             printf("group%1d No sample!\n", (grNum + 1));
-
+#endif
         }else{
             //平均値
             vari5Groupe[grNum].average_pos_x_mm   = tmpX / cnt;
@@ -196,13 +199,17 @@ calc_stat_sor_t computeEpicenter(void){
                 if (dist2[i] > (DEV_XY * DEV_XY)){      //ばらつきが範囲を超えている
                     calcStat = CALC_STATUS_DEV_OVER;
                     ledLightOn(LED_CAUTION);
+#ifdef  DEBUG_APO_2
                     printf("group%1d.d%1d: dev over!\n", (grNum + 1), (i + 1));
+#endif
                 }
                 vari5Groupe[grNum].status = calcStat;
             }else{
                 calcStat = CALC_STATUS_CAL_ERROR;
                 ledLightOn(LED_CAUTION);
+#ifdef  DEBUG_APO_2
                 printf("group%1d.d%1d: dev calc error!\n", (grNum + 1), (i + 1));
+#endif
                 dist2[i] = 99.999;
             }
             
@@ -272,7 +279,9 @@ calc_stat_sor_t computeXY(uint8_t calNum){
         calcStat = CALC_STATUS_NOT_ENOUGH;
         resultError999(calNum, calcStat);
         ledLightOn(LED_CAUTION);
+#ifdef  DEBUG_APO_2
         printf("sensor data select error!\n");
+#endif
         return calcStat;
     }
 
@@ -285,7 +294,9 @@ calc_stat_sor_t computeXY(uint8_t calNum){
         calcStat = CALC_STATUS_CAL_ERROR;
         resultError999(calNum, calcStat);
         ledLightOn(LED_CAUTION);
+#ifdef  DEBUG_APO_2
         printf("- calculation error!\n");
+#endif
         return calcStat;
     }
     
@@ -295,8 +306,10 @@ calc_stat_sor_t computeXY(uint8_t calNum){
         calcStat = CALC_STATUS_R0_ERR;
         resultError999(calNum, calcStat);
         ledLightOn(LED_CAUTION);
+#ifdef  DEBUG_APO_2
         printf(" r0:%f ", calcValue[calNum].radius0_mm);        
         printf("CAL%1d:r0 is too large!\n", (calNum + 1));
+#endif
         return calcStat;
     }
     if ((calcValue[calNum].impact_pos_x_mm < -TARGET_WIDTH_HALF) || (calcValue[calNum].impact_pos_x_mm > TARGET_WIDTH_HALF)){
@@ -304,8 +317,10 @@ calc_stat_sor_t computeXY(uint8_t calNum){
         calcStat = CALC_STATUS_X0_ERR;
         resultError999(calNum, calcStat);
         ledLightOn(LED_CAUTION);
+#ifdef  DEBUG_APO_2
         printf(" x0:%f ", calcValue[calNum].impact_pos_x_mm);        
         printf("CAL%1d:x0 is too large!\n", (calNum + 1));
+#endif
         return calcStat;
     }
     if ((calcValue[calNum].impact_pos_y_mm < -TARGET_HEIGHT_HALF) || (calcValue[calNum].impact_pos_y_mm > TARGET_HEIGHT_HALF)){
@@ -313,8 +328,10 @@ calc_stat_sor_t computeXY(uint8_t calNum){
         calcStat = CALC_STATUS_Y0_ERR;
         resultError999(calNum, calcStat);
         ledLightOn(LED_CAUTION);
+#ifdef  DEBUG_APO_2
         printf(" y0:%f ", calcValue[calNum].impact_pos_y_mm);        
         printf("CAL%1d:y0 is too large!\n", (calNum + 1));
+#endif
         return calcStat;
     }
     
@@ -340,7 +357,9 @@ uint8_t     select3sensor(uint8_t calNum, sensor_data_t* tmp){
             calcStat = CALC_STATUS_NOT_ENOUGH;
             calcValue[calNum].status = calcStat;
             ledLightOn(LED_CAUTION);
+#ifdef  DEBUG_APO_2
             printf("sensor%2d data error!\n", (sensor3outOf5[calNum][i] + 1));
+#endif
             return calcStat;
         }
     }
@@ -439,8 +458,9 @@ uint8_t apollonius3circleXYR(uint8_t numResult, sensor_data_t* tmp3Sensor){
     if (e == 0){
         //センサが一直線に並ぶ時にe=0となる
         //分母がゼロとなり計算できない
+#ifdef  DEBUG_APO_2
         printf("CAL%1d: straight line\n", (numResult + 1));
-        
+#endif        
         e = b[1] * c[2] - b[2] * c[1];      //別の公式で解く
         
 #ifdef  DEBUG_APO
@@ -451,7 +471,9 @@ uint8_t apollonius3circleXYR(uint8_t numResult, sensor_data_t* tmp3Sensor){
             calc_stat = CALC_STATUS_E_ZERO;
             calcValue[numResult].status = calc_stat;
             ledLightOn(LED_CAUTION);
+#ifdef  DEBUG_APO_2
             printf("CAL%1d: E(st) is also zero! ", numResult);
+#endif
         }
         d[1] = (0 - y[1] * y[1] + y[2] * y[2] + r[1] * r[1] - r[2] * r[2]) / 2;
         d[2] = (0 - y[2] * y[2] + y[3] * y[3] + r[2] * r[2] - r[3] * r[3]) / 2;
@@ -479,7 +501,9 @@ uint8_t apollonius3circleXYR(uint8_t numResult, sensor_data_t* tmp3Sensor){
             calc_stat = CALC_STATUS_QUAD_F;
             calcValue[numResult].status = calc_stat;
             ledLightOn(LED_CAUTION);
+#ifdef  DEBUG_APO_2
             printf("CAL%1d: Qst is less than zero! ", (numResult + 1));
+#endif
             return calc_stat;
         }
 
@@ -495,8 +519,7 @@ uint8_t apollonius3circleXYR(uint8_t numResult, sensor_data_t* tmp3Sensor){
               - sqrt( (x02 - sensor5Measure[SENSOR1].sensor_x_mm) * (x02 - sensor5Measure[SENSOR1].sensor_x_mm)
                     + (y[0] - sensor5Measure[SENSOR1].sensor_y_mm) * (y[0] - sensor5Measure[SENSOR1].sensor_y_mm) );
          
-#define DEBUG_APO_2
-#ifdef  DEBUG_APO_2 //
+#ifdef  DEBUG_APO_2
         printf("x01:%10.5f - hant: %10.3f \n", x01, hant);
         printf("x02:%10.5f - hant2:%10.3f \n", x02, hant2);
 #endif
@@ -551,7 +574,9 @@ uint8_t apollonius3circleXYR(uint8_t numResult, sensor_data_t* tmp3Sensor){
             calc_stat = CALC_STATUS_QUAD_F;
             calcValue[numResult].status = calc_stat;
             ledLightOn(LED_CAUTION);
+#ifdef  DEBUG_APO_2
             printf("CAL%1d: Q is less than zero! ", (numResult + 1));
+#endif
             return calc_stat;
         }
 
@@ -572,7 +597,9 @@ uint8_t apollonius3circleXYR(uint8_t numResult, sensor_data_t* tmp3Sensor){
                 calc_stat = CALC_STATUS_R0_UNDER0;
                 calcValue[numResult].status = calc_stat;
                 ledLightOn(LED_CAUTION);
+#ifdef  DEBUG_APO_2
                 printf("CAL%1d: R0 is less than zero! ", numResult);
+#endif
 #ifdef  DEBUG_APO
                 printf("XXX  -> r0 is no solution! \n");
 #endif  

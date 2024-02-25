@@ -100,7 +100,7 @@ void UART1_Initialize( void )
     U1STASET = (_U1STA_UTXEN_MASK | _U1STA_URXEN_MASK );
 
     /* BAUD Rate register Setup */
-    U1BRG = 129;
+    U1BRG = 1562;
 
     /* Turn ON UART1 */
     U1MODESET = _U1MODE_ON_MASK;

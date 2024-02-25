@@ -18,7 +18,10 @@
 #include "measureTimeV5.h"
 
 //DEBUG
-#define COMP_DELAY_TIME_OFF                 //計算の検算中はコンパレータディレイタイムの合算は無し
+#define COMP_DELAY_TIME_OFF //計算の検算中はコンパレータディレイタイムの合算は無し
+//DEBUG (global)
+//#define DEBUG_MEAS_no       //デバッグprintf表示(エラー系)   
+
 
 //GLOBAL
 const float   delay_a = (5.0 / 300);        //コンパレータオンの遅れ時間の計算係数 usec / mm
@@ -159,13 +162,17 @@ uint8_t checkInputOrder(void){
         
         if (sensor5Measure[sensor_number].input_order == 0xff){
             //未検出センサは未検出のまま
-            printf("Sensor%d is NO input!\n", (sensor_number + 1));            
+#ifdef DEBUG_MEAS
+            printf("Sensor%d is NO input!\n", (sensor_number + 1));   
+#endif
             status = INPUT_ORDER_STATUS_NO_INPUT;
             ledLightOn(LED_CAUTION);
             
         }else if (sensor5Measure[sensor_number].input_order != input_order[sensor_number]){
             //修正があった場合
+#ifdef DEBUG_MEAS
             printf("(S%d) input Order (%d -> %d) is changed correctly!\n", sensor_number, sensor5Measure[sensor_number].input_order, input_order[sensor_number]);
+#endif
             status = INPUT_ORDER_STATUS_FIXED;
             ledLightOn(LED_CAUTION);
             sensor5Measure[sensor_number].input_order = input_order[sensor_number];
