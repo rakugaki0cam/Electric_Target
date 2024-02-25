@@ -23,6 +23,7 @@
 #include "definitions.h"                // SYS function prototypes
 #include <string.h>
 #include <math.h>
+#include <xc.h>
 
 //
 #include "BME280v3.h"

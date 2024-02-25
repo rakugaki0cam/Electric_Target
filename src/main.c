@@ -15,7 +15,8 @@
  *      。。。センサ5を抜いた時のばらつき、
  *      の5とおりのうちの一番ばらつきが小さいものを採用する。
  * 
- * DEBUGGer: 9600bps　-> 115200bps (2014.01.17 ~)
+ * DEBUGGer: 9600bps　-> 115200bps (2024.01.17 ~)
+ * タマモニ有線のため　また9600bpsへ (2024.02.25 ~)
  * 
  * 
  * Main.c
@@ -137,6 +138,15 @@ int main ( void ){
     BME280_Init();      //BMP280 temp&pressure
     ESP32slave_Init();  //LCD&WiFi
     PCF8574_Init();     //IOexpander LED
+    
+    //UART
+    UART_SERIAL_SETUP rs485set;
+    rs485set.baudRate = 9600;
+    //rs485set.baudRate = 115200;
+    rs485set.parity = UART_PARITY_NONE;
+    rs485set.dataWidth = UART_DATA_8_BIT;
+    rs485set.stopBits = UART_STOP_1_BIT;
+    UART1_SerialSetup(rs485set, CPU_CLOCK_FREQUENCY >> 1);  //PBCLK2:60MHz
     
     //comparator DAC
     uint16_t    compVth = 100;//mV  CDAconverter/////////////////////////////////////////
